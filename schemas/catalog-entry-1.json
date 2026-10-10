@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/catalog-entry-1.json",
+  "title": "InstallZero catalog entry, version 1",
+  "description": "One known install failure: where it shows up, how to recognise it, what it means, what the user should do, and which named fix the installer may apply. One entry per file, named <id>.json.",
+  "type": "object",
+  "required": ["id", "phases", "pattern", "diagnosis", "advice", "fix", "samples"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": {
+      "description": "Stable kebab-case id; must equal the file name without .json.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "version": {
+      "description": "Bumped when the pattern or fix changes, so failure records refer to an exact entry. Default 1.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "order": {
+      "description": "Entries are tried in ascending order and the first match wins. Leave gaps (10, 20, ...) so entries can be inserted. Entries without an order are tried last.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "phases": {
+      "description": "Phases whose output this entry applies to, or \"*\" for all.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "pattern": {
+      "description": ".NET regular expression matched case-insensitively against the phase's captured output.",
+      "type": "string",
+      "minLength": 1
+    },
+    "seen": {
+      "description": "Optional .NET regular expression applied from the match onwards; its last match becomes the line shown to the user (e.g. the exception line at the end of a traceback).",
+      "type": "string",
+      "minLength": 1
+    },
+    "requires": {
+      "description": "Optional machine fingerprint conditions, e.g. { \"gpu.vendor\": \"nvidia\" }. Reserved; not evaluated yet.",
+      "type": "object"
+    },
+    "diagnosis": {
+      "description": "What the failure means, in plain language for the user.",
+      "type": "string",
+      "minLength": 1
+    },
+    "advice": {
+      "description": "What the user should do, in plain language.",
+      "type": "string",
+      "minLength": 1
+    },
+    "fix": {
+      "description": "A named fix action implemented by the engine. Entries can never contain commands.",
+      "type": "object",
+      "required": ["action"],
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["none", "retry", "restart-docker", "rebuild-clean", "wsl-update", "port-owner", "signout", "recreate", "mongo-owner"]
+        },
+        "params": { "type": "object" }
+      }
+    },
+    "samples": {
+      "description": "Real, redacted log lines. The self-test requires each to match this entry and no earlier one in every listed phase.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "kb": {
+      "description": "Related knowledge-pack articles.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "source": {
+      "description": "Where the entry came from: curated by a maintainer, proposed by the doctor, or promoted from field records.",
+      "type": "string",
+      "enum": ["curated", "doctor-proposed", "field-promoted"]
+    },
+    "records": {
+      "description": "Ids of the failure records that justified a doctor-proposed or field-promoted entry.",
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

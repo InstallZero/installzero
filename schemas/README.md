@@ -11,4 +11,6 @@ plan), then become the contract the Go engine implements.
 | `record-1.json` | One failure record, the only file ever shared |
 | `lock-1.json` | What an install created and from which pinned sources |
 
-None are written yet.
+`catalog-entry-1.json` is written; rl-roboracer's 20 entries
+(`scripts/install/catalog/`) are its first instances. The others follow
+migration step 2 (records, lock file) and step 3 (manifest).
