@@ -340,10 +340,10 @@ $script:NvidiaLookup = 'https://www.nvidia.com/Download/API/lookupValueSearch.as
 $script:NvidiaDriverService = 'https://gfwsl.geforce.com/services_toolkit/services/com/nvidia/services/AjaxDriverService.php?func=DriverManualLookup&osID=57&languageCode=1033&dch=1&sort1=0&numberOfResults=1'
 
 # The project's GPU components (scripts\install\requirements.json, shared with
-# the installer's preflight). The doctor sits in scripts\install\doctor in the
-# repo and in <install state>\doctor next to the installer's copy.
+# the installer's preflight). The installer names its copy in
+# INSTALLZERO_REQUIREMENTS, which also covers failures before the clone.
 function Get-GpuRequirements {
-    $file = @((Join-Path $PSScriptRoot '..\requirements.json'), (Join-Path $script:DoctorRepoDir 'scripts\install\requirements.json')) |
+    $file = @($env:INSTALLZERO_REQUIREMENTS, (Join-Path $PSScriptRoot '..\requirements.json'), (Join-Path $script:DoctorRepoDir 'scripts\install\requirements.json')) | Where-Object { $_ } |
         Where-Object { Test-Path $_ } | Select-Object -First 1
     if (-not $file) { return $null }
     $components = @((Get-Content $file -Raw | ConvertFrom-Json).gpu.components)
