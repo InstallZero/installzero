@@ -3,8 +3,8 @@
     Load the install-bench repositories and probe results into MongoDB.
 
 .DESCRIPTION
-    Database installzero in the stack's mongo container (the app uses
-    robotaxi; nothing there is touched):
+    Database installzero in the eval console's mongo container
+    (console\compose.yml):
 
       bench_repos     one document per candidate, _id = "owner/name", from
                       scored.csv (run Select-Bench.ps1 first): category,
@@ -16,8 +16,8 @@
                       (Invoke-ProbeEval.ps1), _id = hash of repo, model, time
                       and install.md path, so importing twice adds nothing.
 
-    Safe to rerun. Run it on the machine whose stack holds the database
-    (your account); rltest's results are read from the shared folder.
+    Safe to rerun. Run it on the machine that runs the console (your
+    account); rltest's results are read from the shared folder.
 
 .EXAMPLE
     .\Sync-BenchDb.ps1
@@ -33,7 +33,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..\..')).Path
+$consoleDir = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\console')).Path
 $osName = @{ L = 'linux'; W = 'windows'; M = 'macos' }
 function Get-Num($v) { if ($null -eq $v -or "$v" -eq '') { $null } else { [double]$v } }
 
@@ -110,17 +110,17 @@ d.bench_results.createIndex({ prompt_version: 1, run_at: -1 });
 print('totals: bench_repos ' + d.bench_repos.countDocuments() + ' (' + d.bench_repos.countDocuments({ status: 'selected' }) + ' selected), bench_results ' + d.bench_results.countDocuments());
 "@ | Set-Content (Join-Path $tmp 'sync.js') -Encoding utf8
 
-    Push-Location $repoRoot
+    Push-Location $consoleDir
     $ErrorActionPreference = 'Continue'
     try {
         foreach ($n in 'repos', 'results', 'sync') {
             $dest = if ($n -eq 'sync') { '/tmp/bench_sync.js' } else { "/tmp/bench_$n.json" }
             $ext = if ($n -eq 'sync') { 'js' } else { 'json' }
             $out = docker compose cp (Join-Path $tmp "$n.$ext") ("mongo:" + $dest) 2>&1
-            if ($LASTEXITCODE -ne 0) { throw "docker compose cp failed: $out. Is the stack's mongo running?" }
+            if ($LASTEXITCODE -ne 0) { throw "docker compose cp failed: $out. Is the console's mongo running (console\compose.yml)?" }
         }
         # No inner double quotes: Windows PowerShell 5 strips them from native args.
-        docker compose exec -T mongo bash -c 'exec mongosh -u root -p ${MONGODB_ROOT_PASSWORD} --authenticationDatabase admin localhost:27017/admin --quiet --file /tmp/bench_sync.js'
+        docker compose exec -T mongo bash -c 'exec mongosh -u root -p ${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin localhost:27017/admin --quiet --file /tmp/bench_sync.js'
         if ($LASTEXITCODE -ne 0) { throw "mongosh sync failed ($LASTEXITCODE)" }
     } finally { Pop-Location }
 } finally {

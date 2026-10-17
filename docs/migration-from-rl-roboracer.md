@@ -15,7 +15,7 @@ under `scripts/install/` and `evals/`. This plan moves it here. Four decisions s
 | 0. Baseline | Done 2026-10-17 | rl-roboracer branch `installzero-handoff` at `1d5c77e` (local only, not pushed). Mongo backup `%LOCALAPPDATA%\installzero\backups\installzero-20261017-111359.archive.gz`, 9 collections. |
 | 1. Import | Done 2026-10-17 | Import commit in this repo, from `frenb/rl-roboracer@1d5c77e`. |
 | 2. Path fixes | Done 2026-10-17 | `Test-SecretGuard.ps1 -RealRepo ..\rl-roboracer`: 30 of 30 checks pass, 7 of them new. Hosted-model keys copied to this repo's git-ignored `.env`. |
-| 3. Console cutover | Not started | |
+| 3. Console cutover | Done 2026-10-17 | Console and Mongo from `console/compose.yml` (project `installzero`); all 9 collections match the old database. Worker runs from `agent\eval\worker`. Pre-cutover dump `installzero-cutover-20261017-144534.archive.gz`. Old `iz-evals-test` container stopped, not removed. Drop the old database on or after 2026-10-24. |
 | 4. rl-roboracer fetches InstallZero | Not started | |
 | 5. Follow-ups | Not started | |
 
@@ -78,6 +78,10 @@ Nothing here runs from this repo yet. The worker and console keep running from r
 - Stop the worker and restart it from `installzero\agent\eval\worker`. It adopts the jobs that are running.
 - Check that the counts match: results, transcripts, diagnoses, lesson set L1, and queued jobs.
 - `agent\eval\bench\Sync-BenchDb.ps1` runs `docker compose cp/exec mongo` from rl-roboracer's root. Point it at `console\compose.yml` and that Mongo's password variable.
+
+As run: the live console was a standalone `iz-evals-test` container on rl-roboracer's network, not the compose `evals` service (which was never committed and is now removed). No jobs were running or queued. Downtime was about two minutes. The new Mongo is the official `mongo:6.0` image, matching the old server's 6.0.13; its root password is in `console\.env` (git-ignored).
+
+Rollback, until the old database is dropped: `docker compose down` in `console\`, `docker start iz-evals-test`, and restart the worker from rl-roboracer's `scripts\install\agent\eval\worker`. Results recorded after the cutover exist only in the new database.
 - Remove the `evals` service from rl-roboracer's `docker-compose.yml`. Drop the old database a week later.
 
 ### 4. rl-roboracer fetches InstallZero
