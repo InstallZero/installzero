@@ -98,7 +98,7 @@ UI.register('losses', (() => {
     const a = document.getElementById('l-actions');
     a.innerHTML = `<button id="l-diag" class="btn btn-primary" ${diagnosable.length ? '' : 'disabled'}>Diagnose ${diagnosable.length} run${diagnosable.length === 1 ? '' : 's'}</button>
       <span>with</span><select id="l-dmodel" class="inp">${hosted.map(h => `<option>${UI.esc(h)}</option>`).join('')}</select>
-      <span class="text-slate-400">${noTx.length ? `${noTx.length} runs with misses have no stored transcript: run <span class="code">scripts\\install\\agent\\eval\\worker\\Push-Transcripts.ps1</span> on the host (runs before transcripts were stored, or whose transcript two probes shared, cannot be diagnosed).` : 'Every run with misses has a transcript.'}</span>`;
+      <span class="text-slate-400">${noTx.length ? `${noTx.length} runs with misses have no stored transcript: run <span class="code">agent\\eval\\worker\\Push-Transcripts.ps1</span> on the host (runs before transcripts were stored, or whose transcript two probes shared, cannot be diagnosed).` : 'Every run with misses has a transcript.'}</span>`;
     a.querySelector('#l-diag').onclick = async () => {
       const r = await UI.act(() => UI.post('/api/diagnose', { ids: diagnosable.map(x => x._id), model: a.querySelector('#l-dmodel').value }));
       UI.toast(`Queued ${r.queued} diagnoses${r.matched > r.queued ? ` (${r.matched - r.queued} already queued)` : ''}`);

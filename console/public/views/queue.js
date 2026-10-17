@@ -81,7 +81,7 @@ UI.register('queue', (() => {
       const [ws, cs] = await Promise.all([UI.get('/api/workers'), UI.get('/api/campaigns')]);
       document.getElementById('workers').innerHTML = ws.length ? `<table class="simple"><tr><th>Worker</th><th>Slots</th><th>Running</th><th>Seen</th></tr>` +
         ws.map(w => `<tr><td>${w.online ? '<span class="text-emerald-400">●</span>' : '<span class="text-slate-600">●</span>'} ${UI.esc(w._id)}</td><td>${w.slots || 0} (gpu ${w.gpu_slots || 0})</td><td>${(w.running || []).length}</td><td>${UI.ago(w.last_seen)}</td></tr>`).join('') + '</table>'
-        : `<div class="text-slate-400">No worker has checked in. On the Windows host run:<pre class="log mt-2">scripts\\install\\agent\\eval\\worker\\Start-EvalWorker.ps1 -Slots 3</pre></div>`;
+        : `<div class="text-slate-400">No worker has checked in. On the Windows host run:<pre class="log mt-2">agent\\eval\\worker\\Start-EvalWorker.ps1 -Slots 3</pre></div>`;
       document.getElementById('campaigns').innerHTML = cs.length ? `<table class="simple"><tr><th>Campaign</th><th>Dataset</th><th>Models</th><th style="width:28%">Progress</th><th></th></tr>` +
         cs.slice(0, 8).map(c => {
           const n = c.counts || {}, total = Object.values(n).reduce((a, b) => a + b, 0), done = (n.done || 0) + (n.failed || 0) + (n.cancelled || 0);

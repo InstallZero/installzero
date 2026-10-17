@@ -26,7 +26,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-if (-not $AssetsDir) { $AssetsDir = Join-Path $PSScriptRoot '..\..\..\..\..\doctor-assets' }
+if (-not $AssetsDir) { $AssetsDir = Join-Path $PSScriptRoot '..\..\..\doctor-assets' }
 $AssetsDir = (Resolve-Path $AssetsDir).Path
 $modelPath = if (Test-Path $Model) { (Resolve-Path $Model).Path } else { Join-Path $AssetsDir $Model }
 if (-not (Test-Path $modelPath)) { throw "Model not found: $modelPath" }

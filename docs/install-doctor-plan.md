@@ -61,7 +61,7 @@ Install.ps1 phase fails
 ```
 
 Also runnable on its own after install, for problems like "the job fails with
-X": `powershell -File scripts\install\doctor\Doctor.ps1 -Problem "..."`.
+X": `powershell -File doctor\Doctor.ps1 -Problem "..."`.
 
 ### Runtime: llama.cpp `llama-server.exe`
 
@@ -230,7 +230,7 @@ install would also ship the built images as `docker save` archives (roughly
    `finish`. Diagnosis only, no changes. Run the suite; pick the model.
    *Done 2026-10-07 (clean run):* gpt-oss-20b 10/12, Gemma 4 E4B 7/12;
    hosted references Opus 5.5 and GPT 5.6 sol 12/12, Grok 4.7 and Gemini
-   3.1 Pro 11/12 (results in `scripts/install/doctor/MODELS.md`). Gemma 4
+   3.1 Pro 11/12 (results in `doctor/MODELS.md`). Gemma 4
    E4B replaces Qwen3.5-9B as the fallback. The stale-Unity-client case
    fails on both local models and is the first target for the knowledge pack.
 3. **Fixing (1-2 weeks).** Write tools, policy tiers, backups, confirmation

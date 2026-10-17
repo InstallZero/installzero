@@ -192,7 +192,15 @@ function Invoke-IsolatedPowerShell([string]$Command, [int]$TimeoutSec = 60, [str
 # The doctor's own files (this folder with its eval scenarios, the model
 # assets, past transcripts and results) are not part of the install; keeping
 # them out of view also stops the model reading how test faults were planted.
-$script:HiddenPathRegex = 'scripts(\\|/)install(\\|/)doctor((\\|/)|\b)|scripts(\\|/)install(\\|/)agent(\\|/)eval|installzero(\\|/)eval|doctor-assets|rl-roboracer(\\|/)(doctor|eval-stash)\b|eval-results\.jsonl|Scenarios\.ps1|Invoke-DoctorEval'
+# InstallZero's folders are matched by where this copy lives (any clone or
+# engine folder name, and as /mnt/<drive>/... from WSL) and by name; the
+# scripts\install paths are rl-roboracer's copies until it drops them.
+$script:InstallZeroRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..')).TrimEnd('\')
+$izRootWsl = '/mnt/' + $script:InstallZeroRoot.Substring(0, 1).ToLower() + ($script:InstallZeroRoot.Substring(2) -replace '\\', '/')
+$izDirs = '(\\|/)(agent|doctor|console|catalog|schemas|docs|\.env)((\\|/)|$)'
+$script:InstallZeroPathRegex = (@($script:InstallZeroRoot, $izRootWsl) | ForEach-Object { ([regex]::Escape($_) -replace '\\\\|/', '(\\|/)') + $izDirs }) -join '|'
+$script:InstallZeroPathRegex += '|installzero(\\|/)(agent|doctor|console|catalog|engine|eval)((\\|/)|$)'
+$script:HiddenPathRegex = $script:InstallZeroPathRegex + '|scripts(\\|/)install(\\|/)doctor((\\|/)|\b)|scripts(\\|/)install(\\|/)agent(\\|/)eval|doctor-assets|rl-roboracer(\\|/)(doctor|eval-stash)\b|eval-results\.jsonl|Scenarios\.ps1|Invoke-DoctorEval'
 
 function Test-HiddenPath([string]$Path) { $Path -match $script:HiddenPathRegex }
 

@@ -50,7 +50,7 @@ function Invoke-Api([string]$Path, $Body) {
 }
 
 function Get-LocalModels {
-    $dirs = @($env:RL_DOCTOR_ASSETS, (Join-Path $PSScriptRoot '..\..\..\doctor\assets'), (Join-Path $PSScriptRoot '..\..\..\..\..\..\doctor-assets')) | Where-Object { $_ -and (Test-Path $_) }
+    $dirs = @($env:RL_DOCTOR_ASSETS, (Join-Path $PSScriptRoot '..\..\..\doctor\assets'), (Join-Path $PSScriptRoot '..\..\..\..\doctor-assets')) | Where-Object { $_ -and (Test-Path $_) }
     @($dirs | ForEach-Object { Get-ChildItem $_ -Filter *.gguf -ErrorAction SilentlyContinue } | ForEach-Object { $_.Name } | Sort-Object -Unique)
 }
 

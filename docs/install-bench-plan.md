@@ -3,7 +3,7 @@
 Goal: a benchmark of 200 GitHub projects. Each project is installed and
 running; the InstallZero probe reconstructs an install.md from the live
 system (docs hidden), and the result is scored by weighted fact recall, as
-`scripts/install/agent/eval/repos.json` does today. Target: at least 55% of
+`agent/eval/repos.json` does today. Target: at least 55% of
 the repositories in the second and third most difficult of four tiers (T2
 and T3).
 
@@ -289,7 +289,7 @@ profiled to end with 200 that meet the mix.
 
 ### Candidate set v1 (difficulty 7 or more)
 
-`scripts/install/agent/eval/bench/`: `candidates.csv` (294 candidates
+`agent/eval/bench/`: `candidates.csv` (294 candidates
 with their 12 component scores), `Select-Bench.ps1 -Verify` (computes the
 scores, drops difficulty under 7, checks each repository on GitHub, and
 selects), `scored.csv` (every candidate and why it was dropped) and

@@ -22,7 +22,7 @@ function Find-DoctorAssets {
     $candidates = @(
         $env:RL_DOCTOR_ASSETS,
         (Join-Path $PSScriptRoot 'assets'),
-        (Join-Path $PSScriptRoot '..\..\..\..\doctor-assets')
+        (Join-Path $PSScriptRoot '..\..\doctor-assets')
     ) | Where-Object { $_ }
     foreach ($c in $candidates) {
         if ((Test-Path $c) -and (Get-ChildItem $c -Filter *.gguf -ErrorAction SilentlyContinue)) { return (Resolve-Path $c).Path }
@@ -146,15 +146,16 @@ $script:RemoteProviders = @{
 
 function Test-RemoteSpec([string]$Spec) { $Spec -match '^(anthropic|openai|xai|google):.+' }
 
-# Environment first, then the repo's .env (where the stack keeps its keys).
+# Environment first, then the project's .env (where the stack keeps its keys),
+# then InstallZero's own .env.
 function Get-ApiKey([string]$Provider) {
     $vars = $script:RemoteProviders[$Provider].KeyVars
     foreach ($var in $vars) {
         foreach ($scope in 'Process', 'User', 'Machine') { $k = [Environment]::GetEnvironmentVariable($var, $scope); if ($k) { return $k } }
     }
-    $repo = if ($script:DoctorRepoDir) { $script:DoctorRepoDir } else { Join-Path $PSScriptRoot '..\..\..' }
-    $envFile = Join-Path $repo '.env'
-    if (Test-Path $envFile) {
+    $envFiles = @($script:DoctorRepoDir, (Join-Path $PSScriptRoot '..')) | Where-Object { $_ } | ForEach-Object { Join-Path $_ '.env' }
+    foreach ($envFile in $envFiles) {
+        if (-not (Test-Path $envFile)) { continue }
         foreach ($line in Get-Content $envFile) {
             if ($line -match '^\s*([A-Za-z0-9_]+)\s*=\s*(.*)$' -and $vars -contains $Matches[1]) {
                 $k = $Matches[2].Trim().Trim('"').Trim("'")
@@ -162,7 +163,7 @@ function Get-ApiKey([string]$Provider) {
             }
         }
     }
-    throw "Set $($vars[0]) (environment or .env) to use $Provider models."
+    throw "Set $($vars[0]) (environment, the project's .env or InstallZero's .env) to use $Provider models."
 }
 
 function Get-RemoteLlm([string]$Spec) {

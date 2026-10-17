@@ -8,7 +8,7 @@
     Diagnosis only: nothing on the machine is changed. Every run is logged
     as JSON lines under %LOCALAPPDATA%\rl-roboracer\doctor\.
 
-    See docs/install-doctor-plan.md and scripts/install/doctor/MODELS.md.
+    See docs/install-doctor-plan.md and doctor/MODELS.md.
 
 .EXAMPLE
     .\Doctor.ps1 -Problem "Training jobs fail with: DNS resolution failed for fly-brain:50061"
@@ -39,6 +39,7 @@ param(
     [string]$Problem = '',
     # Read the problem from a file instead (the installer passes it this way).
     [string]$ProblemFile = '',
+    # The project's checkout; defaults to the current folder.
     [string]$RepoDir = '',
     [string]$Model = '',
     [ValidateSet('', 'cuda', 'vulkan', 'cpu')][string]$Backend = '',
@@ -58,7 +59,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-if (-not $RepoDir) { $RepoDir = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path }
+if (-not $RepoDir) { $RepoDir = (Get-Location).Path }
 $script:DoctorRepoDir = $RepoDir
 . (Join-Path $PSScriptRoot 'Llm.ps1')
 . (Join-Path $PSScriptRoot 'Tools.ps1')

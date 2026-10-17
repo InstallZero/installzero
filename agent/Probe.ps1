@@ -90,7 +90,7 @@ foreach ($h in $hidden) { $script:HiddenPathRegex += '|(?i)' + [regex]::Escape($
 if ($linux) { $script:HiddenPathRegex += '|/etc/wsl\.conf|/var/log/(apt|dpkg|installer)\b|\.(wget-hsts|lesshst)$' }
 $targetDir = if ($linux) { $null } elseif ($Target -and (Test-Path -LiteralPath $Target -PathType Container)) { (Resolve-Path -LiteralPath $Target).Path } else { $null }
 $linuxDir = if ($linux -and $Target -match '^/') { $Target.TrimEnd('/') } else { $null }
-$script:DoctorRepoDir = if ($targetDir) { $targetDir } elseif ($linux) { (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path } else { $env:USERPROFILE }
+$script:DoctorRepoDir = if ($targetDir) { $targetDir } elseif ($linux) { $script:InstallZeroRoot } else { $env:USERPROFILE }
 if (-not $Out) { $Out = Join-Path (Get-Location) "probe-$(Get-Date -Format 'yyyyMMdd-HHmmss').install.md" }
 $Out = [IO.Path]::GetFullPath($Out)
 # The draft being written is the one hidden-looking file the model may read.
@@ -98,7 +98,7 @@ function Test-HiddenPath([string]$Path) { $Path -ne $script:Out -and $Path -matc
 # A hidden path that shows up in what runs (a startup shortcut's target, a
 # git remote) is evidence; only file contents are hidden, by the content
 # guard. Lines naming InstallZero's own files are still dropped.
-$script:OwnFilesRegex = '(?i)scripts(\\|/)install(\\|/)(agent|doctor)|installzero(\\|/)(probe|agent|eval)|doctor-assets|eval-results\.jsonl'
+$script:OwnFilesRegex = '(?i)' + $script:InstallZeroPathRegex + '|scripts(\\|/)install(\\|/)(agent|doctor)|installzero(\\|/)probe|doctor-assets|eval-results\.jsonl'
 function Remove-HiddenLines([string]$Text) { (($Text -split "`r?`n") | Where-Object { $_ -notmatch $script:OwnFilesRegex }) -join "`n" }
 
 # Content guard: lines that occur only in hidden files are withheld from every

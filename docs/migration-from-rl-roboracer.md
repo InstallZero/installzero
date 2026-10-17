@@ -14,7 +14,7 @@ under `scripts/install/` and `evals/`. This plan moves it here. Four decisions s
 |---|---|---|
 | 0. Baseline | Done 2026-10-17 | rl-roboracer branch `installzero-handoff` at `1d5c77e` (local only, not pushed). Mongo backup `%LOCALAPPDATA%\installzero\backups\installzero-20261017-111359.archive.gz`, 9 collections. |
 | 1. Import | Done 2026-10-17 | Import commit in this repo, from `frenb/rl-roboracer@1d5c77e`. |
-| 2. Path fixes | Not started | |
+| 2. Path fixes | Done 2026-10-17 | `Test-SecretGuard.ps1 -RealRepo ..\rl-roboracer`: 30 of 30 checks pass, 7 of them new. Hosted-model keys copied to this repo's git-ignored `.env`. |
 | 3. Console cutover | Not started | |
 | 4. rl-roboracer fetches InstallZero | Not started | |
 | 5. Follow-ups | Not started | |
@@ -64,11 +64,12 @@ Nothing here runs from this repo yet. The worker and console keep running from r
 
 ### 2. Path fixes
 
-- **Self-hide patterns** in `Probe.ps1` (`HiddenPathRegex` and `OwnFilesRegex`) and `Tools.ps1`: add this repo's `agent`, `doctor`, `console` and `catalog` folders, keeping the old patterns during the transition. Add a check to `Test-SecretGuard.ps1` that reading `agent\eval\repos.json` is refused.
-- **Models folder fallback** in `Llm.ps1` and `Start-EvalWorker.ps1`: the folder depth changes, so the relative fallback to `LATEST\doctor-assets` goes from four levels up to two (`Llm.ps1`) and from six to four (`Start-EvalWorker.ps1`).
-- **`Probe.ps1` repo root** for WSL runs: `..\..\..` becomes `..`.
-- **Path text** shown in the console UI, such as the `Push-Transcripts.ps1` hint, and in the docs.
-- **API keys**: confirm where `Llm.ps1` and the worker read hosted-model keys from, and give this repo its own git-ignored `.env`.
+- **Self-hide patterns.** `Tools.ps1` now hides this repo's `agent`, `doctor`, `console`, `catalog`, `schemas`, `docs` and `.env` by where the running copy lives, in both Windows and `/mnt/<drive>/...` form, so any clone or engine folder name is covered. It also hides them by name (`installzero\agent` and so on). The old `scripts\install\...` patterns stay until phase 4. `Probe.ps1` builds on the same pattern, and its `OwnFilesRegex` reuses it. Before this change, the doctor's pattern did not hide `installzero\agent\eval\repos.json` at all.
+- **Secret-guard checks.** `Test-SecretGuard.ps1` now checks that the benchmark answers and this repo's `.env` are refused via `read_file`, `grep`, `list_dir` and `run_command`, with backslash, forward-slash and WSL paths. Its real-project checks take `-RealRepo` (default: the current folder) instead of assuming they sit inside rl-roboracer.
+- **Models folder fallback.** The relative fallback to `LATEST\doctor-assets` now climbs two levels from `doctor\` (`Llm.ps1`), four from `agent\eval\worker\` (`Start-EvalWorker.ps1`) and three from `doctor\eval\` (`Measure-LlmRuntime.ps1`).
+- **Repo roots.** `Probe.ps1` uses this repo's root in WSL mode. `Doctor.ps1` defaults `-RepoDir` to the current folder, because its old default was rl-roboracer's root; the installer always passes `-RepoDir`. `Select-Bench.ps1` writes to this repo's `docs\`.
+- **API keys.** Nothing sets the provider keys in the user or machine environment; they were read from rl-roboracer's `.env` (the probe's WSL mode and the loss analysis via the old repo-root default). `Get-ApiKey` now tries the environment, then the project's `.env`, then this repo's `.env`. The four keys are copied there.
+- **Path text** in the console's worker and transcript hints, in `repos.json`'s description and in the docs.
 
 ### 3. Console cutover (the only downtime, a few minutes)
 
@@ -76,6 +77,7 @@ Nothing here runs from this repo yet. The worker and console keep running from r
 - Stop the rl-roboracer `evals` container, `mongorestore` a fresh dump into the new Mongo, and start the new console.
 - Stop the worker and restart it from `installzero\agent\eval\worker`. It adopts the jobs that are running.
 - Check that the counts match: results, transcripts, diagnoses, lesson set L1, and queued jobs.
+- `agent\eval\bench\Sync-BenchDb.ps1` runs `docker compose cp/exec mongo` from rl-roboracer's root. Point it at `console\compose.yml` and that Mongo's password variable.
 - Remove the `evals` service from rl-roboracer's `docker-compose.yml`. Drop the old database a week later.
 
 ### 4. rl-roboracer fetches InstallZero
@@ -92,6 +94,7 @@ Nothing here runs from this repo yet. The worker and console keep running from r
 - Update the README in both repos.
 - Add CI here: catalog self-test, `Test-SecretGuard`, and a syntax check of the console.
 - Update the split plan's migration section, which predates the probe and the eval harness.
+- The doctor is still written for rl-roboracer: its synopsis, the system-prompt facts about the stack, the GPU requirements lookup in `scripts\install\requirements.json`, and the 12 eval scenarios. Move those behind the project manifest the split plan describes.
 
 ## Risks
 
