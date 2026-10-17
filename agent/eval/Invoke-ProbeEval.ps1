@@ -49,13 +49,16 @@ param(
     [string]$Model = '',
     [string]$Remote = '',
     [string]$EvalDir = (Join-Path $env:USERPROFILE 'iz-eval'),
-    # Project definitions (facts, hidden paths); the eval console's worker passes its own.
-    [string]$ReposFile = (Join-Path $PSScriptRoot 'repos.json'),
+    # Project definitions (facts, hidden paths); the eval console's worker
+    # passes its own. Default: repos.json beside this script.
+    [string]$ReposFile = '',
     # Also write this run's scored row here (JSON).
     [string]$ResultOut = ''
 )
 
 $ErrorActionPreference = 'Stop'
+# Windows PowerShell leaves $PSScriptRoot empty in parameter defaults under -File.
+if (-not $ReposFile) { $ReposFile = Join-Path $PSScriptRoot 'repos.json' }
 $set = (Get-Content $ReposFile -Raw | ConvertFrom-Json).repos
 $resultsDir = Join-Path $env:LOCALAPPDATA 'installzero\eval'
 $resultsFile = Join-Path $resultsDir 'results.jsonl'

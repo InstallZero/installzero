@@ -28,12 +28,15 @@ param(
     [Parameter(Mandatory)][string]$Project,
     [string]$Root = (Join-Path $env:LOCALAPPDATA 'installzero\bench'),
     [string]$RootfsUrl = 'https://cloud-images.ubuntu.com/wsl/releases/24.04/current/ubuntu-noble-wsl-amd64-24.04lts.rootfs.tar.gz',
-    # Where <id>.json and its scripts are; the eval console's worker writes them from MongoDB.
-    [string]$ProjectsDir = (Join-Path $PSScriptRoot 'projects'),
+    # Where <id>.json and its scripts are; the eval console's worker writes
+    # them from MongoDB. Default: projects\ beside this script.
+    [string]$ProjectsDir = '',
     [switch]$Keep
 )
 
 $ErrorActionPreference = 'Stop'
+# Windows PowerShell leaves $PSScriptRoot empty in parameter defaults under -File.
+if (-not $ProjectsDir) { $ProjectsDir = Join-Path $PSScriptRoot 'projects' }
 . (Join-Path $PSScriptRoot '..\..\LinuxTarget.ps1')
 $def = Get-Content (Join-Path $ProjectsDir "$Project.json") -Raw | ConvertFrom-Json
 $recipe = (@($def.include | Where-Object { $_ }) + $def.recipe | ForEach-Object { Get-Content (Join-Path $ProjectsDir $_) -Raw }) -join "`n"
