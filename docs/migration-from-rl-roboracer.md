@@ -16,7 +16,7 @@ under `scripts/install/` and `evals/`. This plan moves it here. Four decisions s
 | 1. Import | Done 2026-10-17 | Import commit in this repo, from `frenb/rl-roboracer@1d5c77e`. |
 | 2. Path fixes | Done 2026-10-17 | `Test-SecretGuard.ps1 -RealRepo ..\rl-roboracer`: 30 of 30 checks pass, 7 of them new. Hosted-model keys copied to this repo's git-ignored `.env`. |
 | 3. Console cutover | Done 2026-10-17 | Console and Mongo from `console/compose.yml` (project `installzero`); all 9 collections match the old database. Worker runs from `agent\eval\worker`. Pre-cutover dump `installzero-cutover-20261017-144534.archive.gz`. Old `iz-evals-test` container stopped, not removed. Drop the old database on or after 2026-10-24. |
-| 4. rl-roboracer fetches InstallZero | Not started | |
+| 4. rl-roboracer fetches InstallZero | Release channel ready | `v0.1.0` published by `.github/workflows/release-engine.yml` to `https://storage.googleapis.com/installzero/engine/installzero-engine-v0.1.0.zip`, sha256 `8c356063b4a4a1f3954c1b2748a7fe31f22ba15750bb88ff6ad4de71e1224634`. rl-roboracer changes not started. |
 | 5. Follow-ups | Not started | |
 
 ## What was found before starting
@@ -86,8 +86,16 @@ Rollback, until the old database is dropped: `docker compose down` in `console\`
 
 ### 4. rl-roboracer fetches InstallZero
 
-- A new `scripts/install/installzero.json` in rl-roboracer holds the repo, a pinned commit and its sha256.
-- The `install.ps1` bootstrap downloads that archive, verifies it, unpacks it to `%LOCALAPPDATA%\installzero\engine\<sha>`, and passes the path to `Install.ps1`.
+This repo stays private. Projects download a published engine archive instead of the source:
+
+- **Release.** Pushing a `v*` tag runs `.github/workflows/release-engine.yml`. It zips `doctor/` (without `eval/`), `catalog/`, `schemas/`, `LICENSE`, `NOTICE` and a `VERSION` file under a top folder `installzero-engine-<tag>/`. It uploads the zip and a `.sha256` to the public bucket `gs://installzero` (Google Cloud project `installzero`, US multi-region).
+- **Access.** `allUsers` may read objects. The service account `installzero-serviceaccount@` may only create objects in this bucket, so a published version cannot be overwritten or deleted by CI. GitHub Actions acts as it through Workload Identity Federation (pool `github`, provider `installzero-repo`, limited to `InstallZero/installzero`), with no stored key.
+- **Checksums.** The bucket serves `.sha256` files as `application/octet-stream`, so PowerShell's `Invoke-WebRequest` returns bytes; decode them before comparing. Installers should trust the sha256 pinned in the project, not the bucket's `.sha256`.
+
+Then in rl-roboracer:
+
+- A new `scripts/install/installzero.json` holds the engine version, its URL and its sha256.
+- The `install.ps1` bootstrap downloads that archive, verifies it, unpacks it to `%LOCALAPPDATA%\installzero\engine\<version>`, and passes the path to `Install.ps1`.
 - `Install.ps1` loads the doctor from there. It checks rl-roboracer's own catalog first, then InstallZero's, so the project can override generic entries.
 - `Prepare-RlTest.ps1` and `rltest\3-Probe.ps1` stage or fetch the same pinned archive.
 - Delete the moved files from rl-roboracer.
@@ -102,6 +110,6 @@ Rollback, until the old database is dropped: `docker compose down` in `console\`
 
 ## Risks
 
-- **This repo may be private.** If so, an anonymous download of the archive fails and the rl-roboracer installer breaks for users. Make it public before phase 4; otherwise the bootstrap needs a token, which the split plan rules out.
+- **This repo is private.** Resolved: projects download the published engine archive from Cloud Storage, not a GitHub source archive, so no token is needed.
 - **The probe could see the answers.** If phase 2's self-hide fix is missed, eval scores silently inflate. The new secret-guard check is there to catch it.
 - **Phases 1 to 3 don't affect rl-roboracer users.** Its installer keeps using its own copies until phase 4.
