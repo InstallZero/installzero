@@ -16,7 +16,7 @@ under `scripts/install/` and `evals/`. This plan moves it here. Four decisions s
 | 1. Import | Done 2026-10-17 | Import commit in this repo, from `frenb/rl-roboracer@1d5c77e`. |
 | 2. Path fixes | Done 2026-10-17 | `Test-SecretGuard.ps1 -RealRepo ..\rl-roboracer`: 30 of 30 checks pass, 7 of them new. Hosted-model keys copied to this repo's git-ignored `.env`. |
 | 3. Console cutover | Done 2026-10-17 | Console and Mongo from `console/compose.yml` (project `installzero`); all 9 collections match the old database. Worker runs from `agent\eval\worker`. Pre-cutover dump `installzero-cutover-20261017-144534.archive.gz`. Old `iz-evals-test` container stopped, not removed. Drop the old database on or after 2026-10-24. |
-| 4. rl-roboracer fetches InstallZero | Release channel ready | `v0.1.0` published by `.github/workflows/release-engine.yml` to `https://storage.googleapis.com/installzero/engine/installzero-engine-v0.1.0.zip`, sha256 `8c356063b4a4a1f3954c1b2748a7fe31f22ba15750bb88ff6ad4de71e1224634`. rl-roboracer changes not started. |
+| 4. rl-roboracer fetches InstallZero | Done locally 2026-10-17; rltest run and merge pending | rl-roboracer branch `installzero-engine` at `91d8203` (not pushed) pins `v0.1.1`, sha256 `e94dddce0740cae7db179955c62ba459b75ffc87295b3bcd0c53fadca2133559`. Catalog self-test: 20 entries (4 project + 16 engine), 58 checks, 0 failures. `v0.1.0` (`8c356063…`) is unused. |
 | 5. Follow-ups | Not started | |
 
 ## What was found before starting
@@ -101,9 +101,18 @@ Then in rl-roboracer:
 - Delete the moved files from rl-roboracer.
 - Regression check: `rltest` steps 1 to 4 (the Tier A test), the catalog self-test and the doctor's secret-guard test.
 
+As built (the first two points differ from the plan above):
+
+- **`Install.ps1` fetches the engine, not the bootstrap.** That covers the one-liner, a run from a clone and a resumed run alike. The bootstrap now downloads `installzero.json` and the project's 4 catalog entries, and no longer the doctor. `Install.ps1` downloads the pinned zip once, refuses it unless its sha256 matches the pin, and caches it with a `.sha256` marker. Without an engine (offline, or the hash doesn't match) the install still runs, with the project catalog only and no doctor. `-EngineDir`, or an `installzero-engine` folder staged next to the installer, overrides the pin.
+- **The probe is staged, not fetched.** The engine archive leaves out `agent/`, which stays private, so `Prepare-RlTest.ps1` copies `agent\` and `doctor\` from the local checkout (`-InstallZeroDir`, default `..\installzero`) into `<stage>\installzero`, and step 3 runs the probe from there. `-LocalEngine` (also on step 1) stages the checkout's engine for testing unreleased changes. The rltest account itself downloads the pinned release.
+- **`v0.1.1`** adds `INSTALLZERO_REQUIREMENTS`. The installer sets it to its `requirements.json`, so the doctor finds the GPU components before the clone exists, as it did when it sat next to the installer.
+- The self-test now fails with a clear message instead of a crash when `port-in-use` (an engine entry) is missing.
+- Also checked: a pin with the wrong sha256 is refused, nothing is cached and no temporary folders are left; `-EngineDir ..\installzero` gives the same 20 entries; the cached doctor loads.
+
 ### 5. Follow-ups
 
 - Update the README in both repos.
+- Remove the old `scripts\install\agent` / `scripts\install\doctor` self-hide patterns from `Tools.ps1` and `Probe.ps1` once no probe target carries those folders.
 - Add CI here: catalog self-test, `Test-SecretGuard`, and a syntax check of the console.
 - Update the split plan's migration section, which predates the probe and the eval harness.
 - The doctor is still written for rl-roboracer: its synopsis, the system-prompt facts about the stack, the GPU requirements lookup in `scripts\install\requirements.json`, and the 12 eval scenarios. Move those behind the project manifest the split plan describes.
