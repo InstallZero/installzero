@@ -1,0 +1,54 @@
+# Publishes the engine (doctor, catalog, schemas) that projects' installers
+# download: https://storage.googleapis.com/installzero/engine/installzero-engine-<tag>.zip
+# and its .sha256. Push a tag such as v0.1.0 to release. A published version is
+# never replaced: the service account may create objects but not overwrite them.
+name: Release engine
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the archive
+        run: |
+          set -euo pipefail
+          name="installzero-engine-${GITHUB_REF_NAME}"
+          mkdir -p "dist/$name"
+          cp -r doctor catalog schemas LICENSE NOTICE "dist/$name/"
+          rm -rf "dist/$name/doctor/eval"
+          printf '%s\n%s\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" > "dist/$name/VERSION"
+          # Same tag, same bytes: fixed timestamps, sorted entries, no extra attributes.
+          stamp="$(git log -1 --format=%ct)"
+          cd dist
+          find "$name" -exec touch -d "@$stamp" {} +
+          find "$name" -type f | LC_ALL=C sort | zip -X -q "$name.zip" -@
+          sha256sum "$name.zip" > "$name.zip.sha256"
+          echo "ARCHIVE=$name.zip" >> "$GITHUB_ENV"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/713208978575/locations/global/workloadIdentityPools/github/providers/installzero-repo
+          service_account: installzero-serviceaccount@installzero.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Upload
+        run: |
+          set -euo pipefail
+          gcloud storage cp --no-clobber "dist/$ARCHIVE" "dist/$ARCHIVE.sha256" gs://installzero/engine/
+          url="https://storage.googleapis.com/installzero/engine/$ARCHIVE"
+          {
+            echo "### $ARCHIVE"
+            echo ""
+            echo "- URL: $url"
+            echo "- sha256: \`$(cut -d' ' -f1 "dist/$ARCHIVE.sha256")\`"
+          } >> "$GITHUB_STEP_SUMMARY"
