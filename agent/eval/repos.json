@@ -1,0 +1,385 @@
+{
+  "about": "Probe evaluation set: popular projects of medium install complexity with good install docs. Each is installed and running on a test account (by hand or with Agent.ps1 -InstallMd <instructions>), then Probe.ps1 reconstructs an install.md from the live install and Invoke-ProbeEval.ps1 scores it against these facts. Facts are case-insensitive regexes over the install.md; weight 3 = the install fails without it, 2 = important, 1 = detail. Hidden from the probe (Probe.ps1 hides scripts/install/agent). 'hide' lists test-harness paths (staging, installer state) the probe must not see, on top of the docs, install scripts, installer logs and shell history Probe.ps1 always hides.",
+  "repos": [
+    {
+      "id": "rl-roboracer",
+      "source": "https://github.com/frenb/rl-roboracer",
+      "instructions": "README.md (Setup)",
+      "why": "This project: WSL 2, Docker Desktop with GPU, 3 locally built images, Unity clients on Windows, Mongo, startup shortcut.",
+      "serves": "http://127.0.0.1:80 (dashboard), :6006 (TensorBoard), :10000 (ROS-TCP)",
+      "hide": ["C:\\Users\\Public\\rl-roboracer-test", "C:\\Users\\Public\\doctor-assets", "%LOCALAPPDATA%\\rl-roboracer-install"],
+      "facts": [
+        { "id": "clone", "category": "source", "weight": 3, "re": "frenb/rl-roboracer" },
+        { "id": "docker-desktop", "category": "system", "weight": 3, "re": "Docker ?Desktop|Docker\\.DockerDesktop" },
+        { "id": "wsl", "category": "system", "weight": 2, "re": "\\bwsl\\b" },
+        { "id": "gpu-driver", "category": "gpu", "weight": 2, "re": "min_driver|nvidia-smi|551\\.61" },
+        { "id": "compose-build", "category": "deps", "weight": 3, "re": "docker compose[^\\n]*(build|up)" },
+        { "id": "services", "category": "run", "weight": 2, "re": "sim-controller" },
+        { "id": "ros-server", "category": "run", "weight": 2, "re": "ros-server" },
+        { "id": "unity-client", "category": "data", "weight": 3, "re": "UnityBinary|roboracer-gym|Unity client|robotaxi gym" },
+        { "id": "mongo-password", "category": "config", "weight": 2, "re": "MONGO_ROOT_PASSWORD" },
+        { "id": "dashboard-port", "category": "port", "weight": 1, "re": "127\\.0\\.0\\.1(:80)?\\b|localhost(:80)?\\b|\\b80\\b" },
+        { "id": "tensorboard-port", "category": "port", "weight": 1, "re": "6006" },
+        { "id": "num-envs", "category": "config", "weight": 1, "re": "NUM_ENVS|--num-envs" },
+        { "id": "startup", "category": "run", "weight": 1, "re": "Start-ClientAtLogon|Startup" }
+      ]
+    },
+    {
+      "id": "comfyui",
+      "source": "https://github.com/comfyanonymous/ComfyUI",
+      "instructions": "https://raw.githubusercontent.com/comfyanonymous/ComfyUI/master/README.md",
+      "why": "Python venv, PyTorch with the right CUDA wheel index, models folder, single port.",
+      "serves": "http://127.0.0.1:8188",
+      "facts": [
+        { "id": "clone", "category": "source", "weight": 3, "re": "github\\.com/(comfyanonymous|Comfy-Org)/ComfyUI" },
+        { "id": "venv", "category": "runtime", "weight": 2, "re": "-m venv|uv venv|conda create" },
+        { "id": "python-version", "category": "runtime", "weight": 1, "re": "3\\.1[0-3]" },
+        { "id": "torch-cuda", "category": "gpu", "weight": 3, "re": "download\\.pytorch\\.org/whl/cu\\d+" },
+        { "id": "requirements", "category": "deps", "weight": 3, "re": "requirements\\.txt" },
+        { "id": "entry", "category": "run", "weight": 3, "re": "main\\.py" },
+        { "id": "port", "category": "port", "weight": 2, "re": "8188" },
+        { "id": "models", "category": "data", "weight": 1, "re": "models[\\\\/](checkpoints|diffusion_models|vae)" }
+      ]
+    },
+    {
+      "id": "open-webui",
+      "source": "https://github.com/open-webui/open-webui",
+      "instructions": "https://raw.githubusercontent.com/open-webui/open-webui/main/README.md",
+      "why": "Either a pip/uv install on Python 3.11 or a Docker container with a data volume; talks to Ollama.",
+      "serves": "http://127.0.0.1:8080 (pip) or :3000 (docker)",
+      "facts": [
+        { "id": "package", "category": "source", "weight": 3, "re": "pip install open-webui|uv tool install open-webui|uvx[^\\n]*open-webui|ghcr\\.io/open-webui/open-webui" },
+        { "id": "python-311", "category": "runtime", "weight": 2, "re": "3\\.11|ghcr\\.io/open-webui" },
+        { "id": "entry", "category": "run", "weight": 3, "re": "open-webui serve|docker run[^\\n]*open-webui" },
+        { "id": "port", "category": "port", "weight": 2, "re": "\\b8080\\b|3000:8080" },
+        { "id": "data", "category": "data", "weight": 2, "re": "/app/backend/data|DATA_DIR" },
+        { "id": "ollama", "category": "deps", "weight": 1, "re": "ollama|OLLAMA_BASE_URL" }
+      ]
+    },
+    {
+      "id": "ollama",
+      "source": "https://github.com/ollama/ollama",
+      "instructions": "https://raw.githubusercontent.com/ollama/ollama/main/docs/windows.md",
+      "why": "Native Windows installer, background server, model pulls into the user profile.",
+      "serves": "http://127.0.0.1:11434",
+      "facts": [
+        { "id": "installer", "category": "system", "weight": 3, "re": "Ollama\\.Ollama|OllamaSetup\\.exe|ollama\\.com/download" },
+        { "id": "server", "category": "run", "weight": 2, "re": "ollama serve|ollama app|11434" },
+        { "id": "port", "category": "port", "weight": 2, "re": "11434" },
+        { "id": "model", "category": "data", "weight": 3, "re": "ollama (pull|run) [\\w.:-]+" },
+        { "id": "models-dir", "category": "data", "weight": 1, "re": "\\.ollama[\\\\/]models|OLLAMA_MODELS" }
+      ]
+    },
+    {
+      "id": "n8n",
+      "source": "https://github.com/n8n-io/n8n",
+      "instructions": "https://raw.githubusercontent.com/n8n-io/n8n/master/README.md",
+      "why": "Docker container with a named volume and a port; or npx.",
+      "serves": "http://127.0.0.1:5678",
+      "facts": [
+        { "id": "image", "category": "source", "weight": 3, "re": "n8nio/n8n|npx n8n" },
+        { "id": "port", "category": "port", "weight": 2, "re": "5678" },
+        { "id": "volume", "category": "data", "weight": 2, "re": "n8n_data|/home/node/\\.n8n" },
+        { "id": "docker", "category": "system", "weight": 2, "re": "Docker ?Desktop|docker (run|compose)|\\bnode(js)?\\b" }
+      ]
+    },
+    {
+      "id": "immich",
+      "source": "https://github.com/immich-app/immich",
+      "instructions": "https://docs.immich.app/install/docker-compose",
+      "why": "Multi-service docker compose from release assets, .env with paths and a DB password.",
+      "serves": "http://127.0.0.1:2283",
+      "facts": [
+        { "id": "compose-file", "category": "source", "weight": 3, "re": "immich-app/immich/releases[^\\s]*docker-compose\\.yml|docker-compose\\.yml" },
+        { "id": "env-file", "category": "config", "weight": 3, "re": "example\\.env|\\.env" },
+        { "id": "upload-location", "category": "config", "weight": 2, "re": "UPLOAD_LOCATION" },
+        { "id": "db-password", "category": "config", "weight": 2, "re": "DB_PASSWORD" },
+        { "id": "up", "category": "run", "weight": 3, "re": "docker compose[^\\n]*up -d" },
+        { "id": "port", "category": "port", "weight": 2, "re": "2283" },
+        { "id": "services", "category": "run", "weight": 1, "re": "immich-server|immich_server|immich-machine-learning|redis|postgres" }
+      ]
+    },
+    {
+      "id": "sd-webui",
+      "source": "https://github.com/AUTOMATIC1111/stable-diffusion-webui",
+      "instructions": "https://raw.githubusercontent.com/AUTOMATIC1111/stable-diffusion-webui/master/README.md",
+      "why": "Pinned Python 3.10.6, a launcher that builds its own venv and installs torch, a model checkpoint.",
+      "serves": "http://127.0.0.1:7860",
+      "facts": [
+        { "id": "clone", "category": "source", "weight": 3, "re": "AUTOMATIC1111/stable-diffusion-webui" },
+        { "id": "python-310", "category": "runtime", "weight": 3, "re": "3\\.10" },
+        { "id": "launcher", "category": "run", "weight": 3, "re": "webui-user\\.bat|webui\\.bat|launch\\.py" },
+        { "id": "port", "category": "port", "weight": 2, "re": "7860" },
+        { "id": "checkpoint", "category": "data", "weight": 2, "re": "models[\\\\/]Stable-diffusion|\\.safetensors|\\.ckpt" },
+        { "id": "git", "category": "system", "weight": 1, "re": "Git\\.Git|git-scm|\\bgit\\b" }
+      ]
+    },
+    {
+      "id": "harbor",
+      "source": "https://github.com/goharbor/harbor",
+      "instructions": "https://goharbor.io/docs/latest/install-config/",
+      "why": "Install-bench pilot on Linux (WSL snapshot from eval\\wsl\\projects\\harbor.json): Docker Engine from Docker's apt repo, the online installer's harbor.yml with a custom hostname, HTTP port and HTTPS turned off, install.sh with Trivy, ten containers.",
+      "serves": "http://localhost:8880 (harbor.bench.lan)",
+      "wsl": { "snapshot": "harbor", "target": "/opt/harbor" },
+      "facts": [
+        { "id": "docker-engine", "category": "system", "weight": 3, "re": "docker-ce\\b|download\\.docker\\.com|get\\.docker\\.com|docker\\.io\\b" },
+        { "id": "compose-plugin", "category": "system", "weight": 2, "re": "docker-compose-plugin|docker-compose\\b" },
+        { "id": "docker-enabled", "category": "system", "weight": 1, "re": "systemctl[^\\n]*(enable|start)[^\\n]*docker" },
+        { "id": "installer", "category": "source", "weight": 3, "re": "harbor-(online|offline)-installer" },
+        { "id": "version", "category": "source", "weight": 2, "re": "v?2\\.15\\.4" },
+        { "id": "harbor-yml", "category": "config", "weight": 3, "re": "harbor\\.yml" },
+        { "id": "hostname", "category": "config", "weight": 2, "re": "harbor\\.bench\\.lan" },
+        { "id": "hosts-entry", "category": "system", "weight": 1, "re": "/etc/hosts" },
+        { "id": "http-port", "category": "port", "weight": 2, "re": "\\b8880\\b" },
+        { "id": "https-off", "category": "config", "weight": 2, "re": "(comment(ed|ing)?( out)?|disabl\\w*|remov\\w*|without|no|turn\\w* off)[^\\n]{0,60}\\bhttps\\b|\\bhttps\\b[^\\n]{0,60}(comment(ed)?( out)?|disabled|removed|off)|^\\s*#\\s*https:" },
+        { "id": "admin-password", "category": "config", "weight": 2, "re": "harbor_admin_password" },
+        { "id": "db-password", "category": "config", "weight": 1, "re": "database[^\\n]{0,40}password|db_password" },
+        { "id": "install-sh", "category": "run", "weight": 3, "re": "install\\.sh" },
+        { "id": "trivy", "category": "run", "weight": 2, "re": "with-trivy|\\btrivy\\b" },
+        { "id": "boot-unit", "category": "startup", "weight": 2, "re": "harbor\\.service|systemctl[^\\n]*enable[^\\n]*harbor" },
+        { "id": "data-volume", "category": "data", "weight": 1, "re": "data_volume|(^|[\\s:'\"])/data\\b" },
+        { "id": "health", "category": "verify", "weight": 1, "re": "/api/v2\\.0/(health|ping|systeminfo)" }
+      ]
+    },
+    {
+      "id": "netbox",
+      "source": "https://github.com/netbox-community/netbox",
+      "instructions": "https://netboxlabs.com/docs/netbox/installation/",
+      "why": "Install-bench (WSL): release archive, PostgreSQL, Redis, venv via upgrade.sh, configuration.py, gunicorn + netbox-rq units, nginx on 8091, housekeeping cron.",
+      "serves": "http://localhost:8091 (netbox.bench.lan)",
+      "wsl": { "snapshot": "netbox", "target": "/opt/netbox" },
+      "facts": [
+        { "id": "archive", "category": "source", "weight": 3, "re": "netbox-community/netbox" },
+        { "id": "version", "category": "source", "weight": 2, "re": "4\\.7\\.3" },
+        { "id": "postgres", "category": "system", "weight": 3, "re": "postgresql" },
+        { "id": "redis", "category": "system", "weight": 3, "re": "redis" },
+        { "id": "db-user", "category": "config", "weight": 2, "re": "CREATE (USER|ROLE)[^\\n]*netbox|createuser[^\\n]*netbox" },
+        { "id": "config-py", "category": "config", "weight": 3, "re": "configuration\\.py" },
+        { "id": "allowed-hosts", "category": "config", "weight": 2, "re": "ALLOWED_HOSTS" },
+        { "id": "secret-key", "category": "config", "weight": 2, "re": "SECRET_KEY|generate_secret_key" },
+        { "id": "time-zone", "category": "config", "weight": 1, "re": "America/Los_Angeles" },
+        { "id": "login-required", "category": "config", "weight": 1, "re": "LOGIN_REQUIRED" },
+        { "id": "upgrade-sh", "category": "run", "weight": 3, "re": "upgrade\\.sh|pip install[^\\n]*requirements\\.txt[\\s\\S]{0,400}migrate" },
+        { "id": "superuser", "category": "run", "weight": 1, "re": "createsuperuser" },
+        { "id": "units", "category": "startup", "weight": 2, "re": "netbox-rq" },
+        { "id": "gunicorn", "category": "run", "weight": 2, "re": "gunicorn" },
+        { "id": "nginx-port", "category": "port", "weight": 2, "re": "\\b8091\\b" },
+        { "id": "hostname", "category": "config", "weight": 1, "re": "netbox\\.bench\\.lan" },
+        { "id": "housekeeping", "category": "startup", "weight": 1, "re": "housekeeping" }
+      ]
+    },
+    {
+      "id": "moodle",
+      "source": "https://github.com/moodle/moodle",
+      "instructions": "https://docs.moodle.org/405/en/Installing_Moodle",
+      "why": "Install-bench (WSL): Moodle 4.5 LTS tarball, nginx + PHP 8.3 FPM, MariaDB utf8mb4, max_input_vars, CLI installer, moodledata outside the web root, cron every minute.",
+      "serves": "http://localhost:8092",
+      "wsl": { "snapshot": "moodle", "target": "/var/www/moodle" },
+      "facts": [
+        { "id": "release", "category": "source", "weight": 3, "re": "download\\.moodle\\.org|moodle/moodle|MOODLE_405" },
+        { "id": "version", "category": "source", "weight": 2, "re": "\\b4\\.5\\b|405" },
+        { "id": "php", "category": "runtime", "weight": 3, "re": "php8\\.3|php-fpm" },
+        { "id": "php-ext", "category": "runtime", "weight": 2, "re": "php8\\.3-intl|php-intl|\\bintl\\b" },
+        { "id": "max-input-vars", "category": "config", "weight": 2, "re": "max_input_vars" },
+        { "id": "mariadb", "category": "system", "weight": 3, "re": "mariadb" },
+        { "id": "utf8mb4", "category": "config", "weight": 2, "re": "utf8mb4" },
+        { "id": "nginx", "category": "system", "weight": 2, "re": "nginx" },
+        { "id": "port", "category": "port", "weight": 2, "re": "\\b8092\\b" },
+        { "id": "dataroot", "category": "data", "weight": 2, "re": "moodledata" },
+        { "id": "cli-install", "category": "run", "weight": 3, "re": "admin/cli/install(_database)?\\.php" },
+        { "id": "config-php", "category": "config", "weight": 2, "re": "config\\.php" },
+        { "id": "cron", "category": "startup", "weight": 2, "re": "admin/cli/cron\\.php" },
+        { "id": "www-data", "category": "config", "weight": 1, "re": "www-data" }
+      ]
+    },
+    {
+      "id": "synapse",
+      "source": "https://github.com/element-hq/synapse",
+      "instructions": "https://element-hq.github.io/synapse/latest/setup/installation.html",
+      "why": "Install-bench (WSL): matrix-synapse from PyPI in a venv, generated homeserver.yaml switched to PostgreSQL with C collation, port 8090, systemd unit, admin via register_new_matrix_user.",
+      "serves": "http://localhost:8090 (chat.bench.lan)",
+      "wsl": { "snapshot": "synapse", "target": "/opt/synapse" },
+      "facts": [
+        { "id": "package", "category": "source", "weight": 3, "re": "matrix-synapse" },
+        { "id": "version", "category": "source", "weight": 2, "re": "1\\.163\\.0" },
+        { "id": "postgres-extra", "category": "runtime", "weight": 2, "re": "matrix-synapse\\[postgres\\]|psycopg2" },
+        { "id": "venv", "category": "runtime", "weight": 2, "re": "python3? -m venv|virtualenv" },
+        { "id": "postgres", "category": "system", "weight": 3, "re": "postgresql" },
+        { "id": "collation", "category": "config", "weight": 2, "re": "locale[= ]C\\b|LC_COLLATE|lc-collate|template0" },
+        { "id": "generate-config", "category": "config", "weight": 3, "re": "generate-config" },
+        { "id": "server-name", "category": "config", "weight": 3, "re": "chat\\.bench\\.lan" },
+        { "id": "homeserver-yaml", "category": "config", "weight": 2, "re": "homeserver\\.yaml" },
+        { "id": "port", "category": "port", "weight": 2, "re": "\\b8090\\b" },
+        { "id": "report-stats", "category": "config", "weight": 1, "re": "report-stats" },
+        { "id": "unit", "category": "startup", "weight": 2, "re": "\\.service" },
+        { "id": "admin-user", "category": "run", "weight": 1, "re": "register_new_matrix_user" },
+        { "id": "health", "category": "verify", "weight": 1, "re": "/health|/_matrix/" }
+      ]
+    },
+    {
+      "id": "airflow",
+      "source": "https://github.com/apache/airflow",
+      "instructions": "https://airflow.apache.org/docs/apache-airflow/stable/installation/installing-from-pypi.html",
+      "why": "Install-bench (WSL): apache-airflow 3 from PyPI with its constraints file, PostgreSQL metadata DB, LocalExecutor, env file with AIRFLOW__ settings, four systemd units, api-server on 8093.",
+      "serves": "http://localhost:8093",
+      "wsl": { "snapshot": "airflow", "target": "/opt/airflow" },
+      "facts": [
+        { "id": "package", "category": "source", "weight": 3, "re": "apache-airflow" },
+        { "id": "version", "category": "source", "weight": 2, "re": "3\\.3\\.2" },
+        { "id": "constraints", "category": "runtime", "weight": 3, "re": "constraints-" },
+        { "id": "postgres-extra", "category": "runtime", "weight": 2, "re": "apache-airflow\\[postgres\\]|psycopg2" },
+        { "id": "postgres", "category": "system", "weight": 3, "re": "postgresql" },
+        { "id": "conn", "category": "config", "weight": 3, "re": "SQL_ALCHEMY_CONN" },
+        { "id": "executor", "category": "config", "weight": 2, "re": "LocalExecutor" },
+        { "id": "env-file", "category": "config", "weight": 2, "re": "/etc/default/airflow|EnvironmentFile" },
+        { "id": "airflow-home", "category": "config", "weight": 2, "re": "AIRFLOW_HOME" },
+        { "id": "port", "category": "port", "weight": 2, "re": "\\b8093\\b" },
+        { "id": "execution-api", "category": "config", "weight": 2, "re": "EXECUTION_API_SERVER_URL" },
+        { "id": "db-migrate", "category": "run", "weight": 3, "re": "airflow db migrate" },
+        { "id": "components", "category": "startup", "weight": 2, "re": "dag-processor" },
+        { "id": "triggerer", "category": "startup", "weight": 1, "re": "triggerer" },
+        { "id": "no-examples", "category": "config", "weight": 1, "re": "LOAD_EXAMPLES" },
+        { "id": "dag", "category": "data", "weight": 1, "re": "bench_hello" }
+      ]
+    },
+    {
+      "id": "jenkins",
+      "source": "https://github.com/jenkinsci/jenkins",
+      "instructions": "https://www.jenkins.io/doc/book/installing/linux/",
+      "why": "Install-bench (WSL): pkg.jenkins.io debian-stable repo with the 2026 key, Java 21, systemd override for port 8095, setup wizard off, plugins via the plugin manager, admin from Configuration as Code.",
+      "serves": "http://localhost:8095",
+      "wsl": { "snapshot": "jenkins", "target": "/var/lib/jenkins" },
+      "facts": [
+        { "id": "repo", "category": "system", "weight": 3, "re": "pkg\\.jenkins\\.io" },
+        { "id": "key", "category": "system", "weight": 2, "re": "jenkins\\.io-20\\d\\d\\.key|jenkins-keyring" },
+        { "id": "stable", "category": "system", "weight": 1, "re": "debian-stable" },
+        { "id": "java", "category": "runtime", "weight": 3, "re": "openjdk-21|java 21|jdk-21|temurin-21" },
+        { "id": "override", "category": "config", "weight": 2, "re": "jenkins\\.service\\.d|systemctl edit jenkins" },
+        { "id": "port", "category": "port", "weight": 2, "re": "JENKINS_PORT[^\\n]*8095|\\b8095\\b" },
+        { "id": "no-wizard", "category": "config", "weight": 2, "re": "runSetupWizard" },
+        { "id": "casc", "category": "config", "weight": 2, "re": "CASC_JENKINS_CONFIG|configuration-as-code|casc\\.ya?ml" },
+        { "id": "admin-secret", "category": "config", "weight": 1, "re": "JENKINS_ADMIN_PASSWORD" },
+        { "id": "plugins", "category": "data", "weight": 2, "re": "workflow-aggregator" },
+        { "id": "plugin-git", "category": "data", "weight": 1, "re": "\\bgit\\b[^\\n]*plugin|plugins?[^\\n]*\\bgit\\b" },
+        { "id": "plugin-manager", "category": "run", "weight": 1, "re": "plugin-installation-manager|jenkins-plugin-manager|jenkins-plugin-cli" }
+      ]
+    },
+    {
+      "id": "zabbix",
+      "source": "https://github.com/zabbix/zabbix",
+      "instructions": "https://www.zabbix.com/download?zabbix=7.0&os_distribution=ubuntu&os_version=24.04&components=server_frontend_agent&db=mysql&ws=apache",
+      "why": "Install-bench (WSL): zabbix-release 7.0 package, server/frontend/agent with MySQL and Apache, schema import with log_bin_trust_function_creators, frontend configured by file, Apache on 8096, locale.",
+      "serves": "http://localhost:8096/zabbix",
+      "wsl": { "snapshot": "zabbix", "target": "/etc/zabbix" },
+      "facts": [
+        { "id": "release-deb", "category": "system", "weight": 3, "re": "zabbix-release" },
+        { "id": "version", "category": "source", "weight": 2, "re": "\\b7\\.0\\b" },
+        { "id": "server-mysql", "category": "system", "weight": 3, "re": "zabbix-server-mysql" },
+        { "id": "frontend", "category": "system", "weight": 2, "re": "zabbix-frontend-php" },
+        { "id": "apache-conf", "category": "system", "weight": 2, "re": "zabbix-apache-conf" },
+        { "id": "agent", "category": "system", "weight": 1, "re": "zabbix-agent\\b" },
+        { "id": "mysql", "category": "system", "weight": 3, "re": "mysql-server" },
+        { "id": "collation", "category": "config", "weight": 2, "re": "utf8mb4_bin" },
+        { "id": "schema", "category": "data", "weight": 3, "re": "server\\.sql\\.gz" },
+        { "id": "trust-creators", "category": "config", "weight": 1, "re": "log_bin_trust_function_creators" },
+        { "id": "db-password", "category": "config", "weight": 2, "re": "DBPassword" },
+        { "id": "frontend-conf", "category": "config", "weight": 2, "re": "zabbix\\.conf\\.php" },
+        { "id": "port", "category": "port", "weight": 2, "re": "\\b8096\\b" },
+        { "id": "locale", "category": "system", "weight": 1, "re": "locale-gen|en_US\\.UTF-8" },
+        { "id": "pollers", "category": "config", "weight": 1, "re": "StartPollers" }
+      ]
+    },
+    {
+      "id": "llamacpp",
+      "source": "https://github.com/ggml-org/llama.cpp",
+      "instructions": "https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md",
+      "why": "Install-bench (WSL): source build with CMake (CPU, static, portable), a small GGUF model from Hugging Face, llama-server as a systemd service on 8097 with an API key.",
+      "serves": "http://localhost:8097",
+      "wsl": { "snapshot": "llamacpp", "target": "/opt/llama.cpp" },
+      "facts": [
+        { "id": "clone", "category": "source", "weight": 3, "re": "ggml-org/llama\\.cpp|ggerganov/llama\\.cpp" },
+        { "id": "tag", "category": "source", "weight": 2, "re": "v0\\.7\\.0" },
+        { "id": "toolchain", "category": "system", "weight": 2, "re": "build-essential|\\bg\\+\\+|gcc" },
+        { "id": "cmake", "category": "system", "weight": 3, "re": "cmake -S|cmake -B|cmake \\.\\." },
+        { "id": "curl-dev", "category": "system", "weight": 1, "re": "libcurl" },
+        { "id": "release", "category": "config", "weight": 1, "re": "CMAKE_BUILD_TYPE=Release|--config Release" },
+        { "id": "portable", "category": "config", "weight": 1, "re": "GGML_NATIVE=OFF" },
+        { "id": "model", "category": "data", "weight": 3, "re": "qwen2\\.5-0\\.5b-instruct-q4_k_m\\.gguf" },
+        { "id": "model-source", "category": "data", "weight": 2, "re": "huggingface\\.co/Qwen" },
+        { "id": "server", "category": "run", "weight": 3, "re": "llama-server" },
+        { "id": "port", "category": "port", "weight": 2, "re": "\\b8097\\b" },
+        { "id": "context", "category": "config", "weight": 1, "re": "(-c|--ctx-size) 4096" },
+        { "id": "alias", "category": "config", "weight": 1, "re": "bench-qwen" },
+        { "id": "api-key", "category": "config", "weight": 2, "re": "api-key|LLAMA_API_KEY" },
+        { "id": "unit", "category": "startup", "weight": 2, "re": "llama-server\\.service|systemctl[^\\n]*enable[^\\n]*llama" }
+      ]
+    },
+    {
+      "id": "paperless",
+      "source": "https://github.com/paperless-ngx/paperless-ngx",
+      "instructions": "https://docs.paperless-ngx.com/setup/#docker",
+      "why": "Install-bench (WSL): Docker Engine, the PostgreSQL compose file with docker-compose.env and .env, pinned image, port 8098, German OCR, time zone, admin from the environment.",
+      "serves": "http://localhost:8098 (paperless.bench.lan)",
+      "wsl": { "snapshot": "paperless", "target": "/opt/paperless" },
+      "facts": [
+        { "id": "docker-engine", "category": "system", "weight": 3, "re": "docker-ce\\b|download\\.docker\\.com|get\\.docker\\.com" },
+        { "id": "compose-file", "category": "source", "weight": 3, "re": "docker-compose\\.postgres\\.yml|paperless-ngx/paperless-ngx[^\\n]*docker/compose" },
+        { "id": "image", "category": "source", "weight": 2, "re": "paperless-ngx:3\\.3\\.2|3\\.3\\.2" },
+        { "id": "env-file", "category": "config", "weight": 3, "re": "docker-compose\\.env" },
+        { "id": "secret-key", "category": "config", "weight": 2, "re": "PAPERLESS_SECRET_KEY" },
+        { "id": "ocr", "category": "config", "weight": 2, "re": "PAPERLESS_OCR_LANGUAGE[^\\n]*deu" },
+        { "id": "time-zone", "category": "config", "weight": 1, "re": "PAPERLESS_TIME_ZONE" },
+        { "id": "url", "category": "config", "weight": 1, "re": "PAPERLESS_URL" },
+        { "id": "admin", "category": "config", "weight": 1, "re": "PAPERLESS_ADMIN_USER" },
+        { "id": "db-pass", "category": "config", "weight": 1, "re": "PAPERLESS_DBPASS|POSTGRES_PASSWORD" },
+        { "id": "port", "category": "port", "weight": 2, "re": "\\b8098\\b" },
+        { "id": "up", "category": "run", "weight": 3, "re": "docker compose[^\\n]*up -d" },
+        { "id": "folders", "category": "data", "weight": 1, "re": "consume" }
+      ]
+    },
+    {
+      "id": "authentik",
+      "source": "https://github.com/goauthentik/authentik",
+      "instructions": "https://docs.goauthentik.io/install-config/install/docker-compose",
+      "why": "Install-bench (WSL): Docker Engine, the official compose.yml, .env with generated PG_PASS and AUTHENTIK_SECRET_KEY, pinned tag, ports 9010/9453, bootstrap admin.",
+      "serves": "http://localhost:9010",
+      "wsl": { "snapshot": "authentik", "target": "/opt/authentik" },
+      "facts": [
+        { "id": "docker-engine", "category": "system", "weight": 3, "re": "docker-ce\\b|download\\.docker\\.com|get\\.docker\\.com" },
+        { "id": "compose-file", "category": "source", "weight": 3, "re": "goauthentik\\.io/(docker-)?compose\\.yml|goauthentik/authentik[^\\n]*compose" },
+        { "id": "tag", "category": "source", "weight": 2, "re": "2026\\.8\\.4" },
+        { "id": "pg-pass", "category": "config", "weight": 3, "re": "PG_PASS" },
+        { "id": "secret-key", "category": "config", "weight": 3, "re": "AUTHENTIK_SECRET_KEY" },
+        { "id": "http-port", "category": "port", "weight": 2, "re": "COMPOSE_PORT_HTTP[^S][^\\n]*9010|\\b9010\\b" },
+        { "id": "https-port", "category": "port", "weight": 1, "re": "\\b9453\\b" },
+        { "id": "bootstrap", "category": "config", "weight": 1, "re": "AUTHENTIK_BOOTSTRAP_(PASSWORD|EMAIL)" },
+        { "id": "error-reporting", "category": "config", "weight": 1, "re": "ERROR_REPORTING" },
+        { "id": "up", "category": "run", "weight": 3, "re": "docker compose[^\\n]*up -d" },
+        { "id": "health", "category": "verify", "weight": 1, "re": "/-/health/" }
+      ]
+    },
+    {
+      "id": "mattermost",
+      "source": "https://github.com/mattermost/docker",
+      "instructions": "https://docs.mattermost.com/deployment-guide/server/containers/install-docker.html",
+      "why": "Install-bench (WSL): Docker Engine, the mattermost/docker repo, .env from env.example, the without-nginx override on port 8099, volume folders owned by uid 2000.",
+      "serves": "http://localhost:8099 (chat.bench.lan)",
+      "wsl": { "snapshot": "mattermost", "target": "/opt/mattermost-docker" },
+      "facts": [
+        { "id": "docker-engine", "category": "system", "weight": 3, "re": "docker-ce\\b|download\\.docker\\.com|get\\.docker\\.com" },
+        { "id": "clone", "category": "source", "weight": 3, "re": "mattermost/docker" },
+        { "id": "env-example", "category": "config", "weight": 3, "re": "env\\.example" },
+        { "id": "domain", "category": "config", "weight": 2, "re": "chat\\.bench\\.lan" },
+        { "id": "image-tag", "category": "source", "weight": 2, "re": "11\\.7\\.0" },
+        { "id": "app-port", "category": "port", "weight": 2, "re": "APP_PORT[^\\n]*8099|\\b8099\\b" },
+        { "id": "without-nginx", "category": "run", "weight": 3, "re": "docker-compose\\.without-nginx\\.yml" },
+        { "id": "volumes", "category": "data", "weight": 2, "re": "volumes/app/mattermost" },
+        { "id": "uid-2000", "category": "config", "weight": 2, "re": "2000:2000" },
+        { "id": "postgres-pass", "category": "config", "weight": 1, "re": "POSTGRES_PASSWORD" },
+        { "id": "site-url", "category": "config", "weight": 1, "re": "SITEURL" },
+        { "id": "time-zone", "category": "config", "weight": 1, "re": "America/Los_Angeles|\\bTZ=" },
+        { "id": "up", "category": "run", "weight": 3, "re": "docker compose[^\\n]*up -d" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+    "id":  "zabbix",
+    "repo":  "zabbix/zabbix",
+    "include":  [
+
+                ],
+    "recipe":  "zabbix.sh",
+    "target":  "/etc/zabbix",
+    "ready":  "systemctl is-active -q zabbix-server \u0026\u0026 curl -fsS http://localhost:8096/zabbix/index.php | grep -qi zabbix",
+    "ready_timeout_sec":  300,
+    "remove":  [
+
+               ]
+}

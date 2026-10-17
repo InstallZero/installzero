@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/catalog-entry-1.json",
+  "id": "download-truncated",
+  "version": 1,
+  "order": 10,
+  "phases": ["build"],
+  "pattern": "DO NOT MATCH THE HASHES|BadZipFile: Bad CRC-32",
+  "diagnosis": "A download was cut short or corrupted. Docker Desktop's network intermittently truncates large downloads.",
+  "advice": "Retrying; finished build steps are cached, so the retry resumes where it failed.",
+  "fix": { "action": "retry" },
+  "samples": [
+    "#20 5.798 ERROR: THESE PACKAGES DO NOT MATCH THE HASHES FROM THE REQUIREMENTS FILE. If you have updated the package versions, please update the hashes.",
+    "#26 2.736 zipfile.BadZipFile: Bad CRC-32 for file 'numpy/core/tests/data/umath-validation-set-log1p.csv'"
+  ],
+  "source": "curated"
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/catalog-entry-1.json",
+  "id": "gpu-not-in-docker",
+  "version": 1,
+  "order": 110,
+  "phases": ["docker-gpu"],
+  "pattern": "could not select device driver[^\\n]*gpu|nvidia-container-cli|libnvidia-ml\\.so|Failed to initialize NVML|no CUDA-capable device",
+  "diagnosis": "Docker cannot reach the NVIDIA GPU.",
+  "advice": "Run \"wsl --update\" and restart Docker Desktop. If that does not help, install the latest NVIDIA driver from https://www.nvidia.com/Download/index.aspx.",
+  "fix": { "action": "wsl-update" },
+  "samples": [
+    "docker: Error response from daemon: could not select device driver \"\" with capabilities: [[gpu]].",
+    "nvidia-container-cli: initialization error: WSL environment detected but no adapters were found: unknown."
+  ],
+  "source": "curated"
+}

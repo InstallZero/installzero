@@ -1,0 +1,14 @@
+{
+    "id":  "llamacpp",
+    "repo":  "ggml-org/llama.cpp",
+    "include":  [
+
+                ],
+    "recipe":  "llamacpp.sh",
+    "target":  "/opt/llama.cpp",
+    "ready":  "curl -fsS http://localhost:8097/health | grep -q ok",
+    "ready_timeout_sec":  300,
+    "remove":  [
+
+               ]
+}

@@ -1,0 +1,14 @@
+{
+    "id":  "airflow",
+    "repo":  "apache/airflow",
+    "include":  [
+
+                ],
+    "recipe":  "airflow.sh",
+    "target":  "/opt/airflow",
+    "ready":  "curl -fsS http://localhost:8093/api/v2/monitor/health | grep -q healthy",
+    "ready_timeout_sec":  420,
+    "remove":  [
+
+               ]
+}

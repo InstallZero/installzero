@@ -1,0 +1,14 @@
+{
+    "id":  "paperless",
+    "repo":  "paperless-ngx/paperless-ngx",
+    "include":  [
+                    "_docker.sh"
+                ],
+    "recipe":  "paperless.sh",
+    "target":  "/opt/paperless",
+    "ready":  "curl -fsS -o /dev/null http://localhost:8098/accounts/login/",
+    "ready_timeout_sec":  600,
+    "remove":  [
+
+               ]
+}

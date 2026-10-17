@@ -1,0 +1,14 @@
+{
+    "id":  "netbox",
+    "repo":  "netbox-community/netbox",
+    "include":  [
+
+                ],
+    "recipe":  "netbox.sh",
+    "target":  "/opt/netbox",
+    "ready":  "curl -fsS http://localhost:8091/login/ | grep -qi netbox",
+    "ready_timeout_sec":  300,
+    "remove":  [
+                   "/opt/netbox.tar.gz"
+               ]
+}

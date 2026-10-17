@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/catalog-entry-1.json",
+  "id": "clone-target-exists",
+  "version": 1,
+  "order": 120,
+  "phases": ["git"],
+  "pattern": "already exists and is not an empty directory",
+  "diagnosis": "The install folder already contains an rl-roboracer folder that is not a git checkout.",
+  "advice": "Move or delete that folder, or pass a different -InstallDir.",
+  "fix": { "action": "none" },
+  "samples": ["fatal: destination path 'C:\\Users\\me\\rl-roboracer\\rl-roboracer' already exists and is not an empty directory."],
+  "source": "curated"
+}

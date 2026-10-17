@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/catalog-entry-1.json",
+  "id": "repo-files-missing",
+  "version": 1,
+  "order": 130,
+  "phases": ["container"],
+  "pattern": "ENOENT[^\\n]*package\\.json|can't open file '[^']*\\.py'|No such file or directory[^\\n]*\\.py'",
+  "diagnosis": "A container cannot see the repo files it runs from. Usually the install folder was deleted or moved while its containers still existed; Docker restarted them and recreated the missing folders empty.",
+  "advice": "Recreate the containers from the current install folder: docker compose up -d --force-recreate.",
+  "fix": { "action": "recreate" },
+  "samples": [
+    "npm error enoent Could not read package.json: Error: ENOENT: no such file or directory, open '/dashboard/package.json'",
+    "python: can't open file 'robotaxi.py': [Errno 2] No such file or directory"
+  ],
+  "source": "curated"
+}

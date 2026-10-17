@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/catalog-entry-1.json",
+  "id": "wsl-outdated",
+  "version": 1,
+  "order": 90,
+  "phases": ["docker-start"],
+  "pattern": "WSL (needs|requires) (updating|an update)|WSL kernel version too low|wsl --update",
+  "diagnosis": "WSL needs an update before Docker Desktop can start.",
+  "advice": "Run \"wsl --update\" as administrator, then restart Docker Desktop.",
+  "fix": { "action": "wsl-update" },
+  "samples": ["WSL needs updating. Your version of WSL is too old. Run 'wsl --update' to update it."],
+  "source": "curated"
+}

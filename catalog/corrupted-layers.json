@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/catalog-entry-1.json",
+  "id": "corrupted-layers",
+  "version": 1,
+  "order": 60,
+  "phases": ["verify"],
+  "pattern": "cannot import name|ImportError|SyntaxError|No module named|is only \\d+ KB - corrupted layer",
+  "diagnosis": "The image built, but files inside it are damaged or missing. A crashed earlier build most likely left half-written layers in Docker's build cache, which this build reused.",
+  "advice": "Clear Docker's build cache and rebuild this image without cache.",
+  "fix": { "action": "rebuild-clean" },
+  "samples": [
+    "ImportError: cannot import name 'LazyLoader' from 'tensorflow.python.util.lazy_loader' (/usr/local/lib/python3.8/dist-packages/tensorflow/python/util/lazy_loader.py)",
+    "tensorflow folder is only 122900 KB - corrupted layer"
+  ],
+  "source": "curated"
+}

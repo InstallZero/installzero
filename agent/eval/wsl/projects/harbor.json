@@ -1,0 +1,16 @@
+{
+  "id": "harbor",
+  "repo": "goharbor/harbor",
+  "recipe": "harbor.sh",
+  "target": "/opt/harbor",
+  "ready": "curl -fsS http://localhost:8880/api/v2.0/health | grep -q '\"status\":\"healthy\"'",
+  "ready_timeout_sec": 300,
+  "remove": [
+    "/opt/harbor-online-installer.tgz",
+    "/opt/harbor/install.sh",
+    "/opt/harbor/prepare",
+    "/opt/harbor/common.sh",
+    "/opt/harbor/LICENSE",
+    "/opt/harbor/harbor.yml.tmpl"
+  ]
+}

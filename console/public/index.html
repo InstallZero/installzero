@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8">
+  <title>InstallZero Evals</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator_midnight.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <link href="/styles.css" rel="stylesheet">
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen">
+  <header class="border-b border-slate-800 bg-slate-900/80 sticky top-0 z-30 backdrop-blur">
+    <div class="max-w-[1600px] mx-auto px-4 flex items-center gap-6 h-12">
+      <div class="font-semibold tracking-tight text-slate-100">InstallZero <span class="text-sky-400">Evals</span></div>
+      <nav id="nav" class="flex gap-1 text-sm">
+        <a href="#queue" data-view="queue">Queue</a>
+        <a href="#launch" data-view="launch">New eval</a>
+        <a href="#repos" data-view="repos">Repos</a>
+        <a href="#datasets" data-view="datasets">Datasets</a>
+        <a href="#analysis" data-view="analysis">Analysis</a>
+        <a href="#losses" data-view="losses">Losses</a>
+      </nav>
+      <div id="summary" class="ml-auto text-xs text-slate-400 flex gap-4"></div>
+    </div>
+  </header>
+  <main id="view" class="max-w-[1600px] mx-auto px-4 py-4"></main>
+  <div id="drawer" class="drawer hidden">
+    <div class="drawer-panel">
+      <div class="flex items-center justify-between border-b border-slate-800 px-4 h-11">
+        <div id="drawer-title" class="font-medium truncate"></div>
+        <button class="btn" onclick="UI.closeDrawer()">Close</button>
+      </div>
+      <div id="drawer-body" class="p-4 overflow-auto" style="height: calc(100% - 2.75rem)"></div>
+    </div>
+  </div>
+  <div id="toasts" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+  <script src="/app.js"></script>
+  <script src="/views/queue.js"></script>
+  <script src="/views/launch.js"></script>
+  <script src="/views/repos.js"></script>
+  <script src="/views/datasets.js"></script>
+  <script src="/views/result.js"></script>
+  <script src="/views/analysis.js"></script>
+  <script src="/views/losses.js"></script>
+  <script>UI.start();</script>
+</body>
+</html>

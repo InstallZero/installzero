@@ -1,0 +1,14 @@
+{
+  "name": "installzero-evals",
+  "version": "0.1.0",
+  "private": true,
+  "description": "InstallZero eval console: repos, datasets, queued eval runs across parallel workers, and model comparison.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "mongodb": "^6.12.0"
+  }
+}

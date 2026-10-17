@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/catalog-entry-1.json",
+  "id": "illegal-instruction",
+  "version": 1,
+  "order": 50,
+  "phases": ["verify", "trainer"],
+  "pattern": "Illegal instruction",
+  "diagnosis": "This CPU, or the emulator running the container, lacks instructions (AVX) that TensorFlow's prebuilt packages need.",
+  "advice": "The installer cannot fix this; this machine cannot run the trainer image as built.",
+  "fix": { "action": "none" },
+  "samples": ["bash: line 3:    12 Illegal instruction     (core dumped) python3 -c 'import tensorflow'"],
+  "source": "curated"
+}

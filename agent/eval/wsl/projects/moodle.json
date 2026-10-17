@@ -1,0 +1,14 @@
+{
+    "id":  "moodle",
+    "repo":  "moodle/moodle",
+    "include":  [
+
+                ],
+    "recipe":  "moodle.sh",
+    "target":  "/var/www/moodle",
+    "ready":  "curl -fsS http://localhost:8092/login/index.php | grep -qi moodle",
+    "ready_timeout_sec":  300,
+    "remove":  [
+                   "/var/www/moodle.tgz"
+               ]
+}

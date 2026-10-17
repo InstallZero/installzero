@@ -1,0 +1,17 @@
+repo,disk_gb,basis
+google-deepmind/alphafold,2600,full genetic databases (about 600 GB with reduced_dbs)
+aqlaboratory/openfold,2600,the AlphaFold 2 genetic databases
+google-deepmind/alphafold3,630,genetic databases
+baker-laboratory/RoseTTAFold-All-Atom,400,UniRef30; BFD; PDB100 databases
+Security-Onion-Solutions/securityonion,200,documented minimum disk
+carla-simulator/carla,165,documented disk for an Unreal Engine source build
+Wan-Video/Wan2.1,75,14B weights plus text encoder and environment
+Tencent-Hunyuan/HunyuanVideo,65,weights plus text encoder and environment
+NVIDIA/TensorRT-LLM,60,container plus weights plus built engines
+NVIDIA-ISAAC-ROS/isaac_ros_common,60,dev container images plus assets
+o3de/o3de,60,documented minimum for engine source plus 3rdParty packages
+nf-core/sarek,60,GRCh38 references plus containers
+ApolloAuto/apollo,60,dev images plus Bazel build cache
+autowarefoundation/autoware,55,ROS 2 workspace build plus maps and images
+isaac-sim/IsaacLab,50,Isaac Sim pip packages plus caches
+NVIDIA/Megatron-LM,50,NGC container plus data and checkpoints

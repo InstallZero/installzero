@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/catalog-entry-1.json",
+  "id": "disk-full",
+  "version": 1,
+  "order": 30,
+  "phases": ["*"],
+  "pattern": "no space left on device|not enough space on the disk",
+  "diagnosis": "The disk Docker uses is full.",
+  "advice": "Free space, then re-run. \"docker system df\" shows what Docker uses; \"docker builder prune -af\" and \"docker image prune -a\" reclaim build cache and unused images.",
+  "fix": { "action": "none" },
+  "samples": ["failed to copy files: write /var/lib/docker/tmp/buildkit-mount/x.whl: no space left on device"],
+  "source": "curated"
+}

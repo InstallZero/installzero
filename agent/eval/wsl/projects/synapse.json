@@ -1,0 +1,14 @@
+{
+    "id":  "synapse",
+    "repo":  "element-hq/synapse",
+    "include":  [
+
+                ],
+    "recipe":  "synapse.sh",
+    "target":  "/opt/synapse",
+    "ready":  "curl -fsS http://localhost:8090/health | grep -q OK",
+    "ready_timeout_sec":  300,
+    "remove":  [
+
+               ]
+}

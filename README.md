@@ -31,6 +31,12 @@ installzero init                                    write a starter install.json
 |---|---|---|
 | `schemas/` | JSON schemas for the manifest, catalog entries, failure records and the lock file | Apache 2.0 |
 | `catalog/` | One JSON file per known failure: signature pattern, diagnosis, named fix action, redacted samples | CC BY 4.0 |
+| `doctor/` | Diagnoses a failed install from its logs with a local or hosted model, using the catalog and a fixed set of read-only tools | Apache 2.0 |
+| `doctor/kb/` | Short articles the doctor can look up | CC BY-SA 4.0 |
+| `agent/` | The probe and agent loop that work out how to install a repo and write its `install.md` | Apache 2.0 |
+| `agent/eval/` | Benchmark of hard-to-install repos, WSL recipes, and the worker that runs eval jobs | Apache 2.0 |
+| `console/` | Web console for queuing evals, comparing models, and reviewing losses and lessons | Apache 2.0 |
+| `docs/` | Plans and design notes | Apache 2.0 |
 
 ## Licences
 

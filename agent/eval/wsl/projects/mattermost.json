@@ -1,0 +1,14 @@
+{
+    "id":  "mattermost",
+    "repo":  "mattermost/docker",
+    "include":  [
+                    "_docker.sh"
+                ],
+    "recipe":  "mattermost.sh",
+    "target":  "/opt/mattermost-docker",
+    "ready":  "curl -fsS http://localhost:8099/api/v4/system/ping | grep -q OK",
+    "ready_timeout_sec":  600,
+    "remove":  [
+
+               ]
+}

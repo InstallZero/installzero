@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/catalog-entry-1.json",
+  "id": "docker-vm-crash",
+  "version": 1,
+  "order": 20,
+  "phases": ["build"],
+  "pattern": "failed to receive status: rpc error|error reading from server: EOF|session healthcheck failed|desc = connection error",
+  "diagnosis": "Docker Desktop's engine crashed or restarted during the build, usually while unpacking a large image.",
+  "advice": "Restart Docker Desktop, then run the installer again.",
+  "fix": { "action": "restart-docker" },
+  "samples": [
+    "ERROR: failed to build: failed to receive status: rpc error: code = Unavailable desc = error reading from server: EOF",
+    "session healthcheck failed fatally: Unavailable: connection error: desc = \"transport: Error while dialing: only one connection allowed\""
+  ],
+  "source": "curated"
+}

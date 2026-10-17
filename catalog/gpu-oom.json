@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/catalog-entry-1.json",
+  "id": "gpu-oom",
+  "version": 1,
+  "order": 170,
+  "phases": ["trainer"],
+  "pattern": "ResourceExhaustedError|CUDA_ERROR_OUT_OF_MEMORY|OOM when allocating",
+  "diagnosis": "The GPU ran out of memory.",
+  "advice": "Close other programs using the GPU (games, other ML jobs, a second training stack), then re-run.",
+  "fix": { "action": "none" },
+  "samples": ["tensorflow.python.framework.errors_impl.ResourceExhaustedError: OOM when allocating tensor with shape[512,512] and type float"],
+  "source": "curated"
+}

@@ -1,0 +1,14 @@
+{
+    "id":  "authentik",
+    "repo":  "goauthentik/authentik",
+    "include":  [
+                    "_docker.sh"
+                ],
+    "recipe":  "authentik.sh",
+    "target":  "/opt/authentik",
+    "ready":  "curl -fsS -o /dev/null http://localhost:9010/-/health/live/",
+    "ready_timeout_sec":  600,
+    "remove":  [
+
+               ]
+}

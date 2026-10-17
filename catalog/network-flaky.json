@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/catalog-entry-1.json",
+  "id": "network-flaky",
+  "version": 1,
+  "order": 40,
+  "phases": ["build", "git", "download"],
+  "pattern": "Temporary failure in name resolution|Could not resolve host|Read timed out|ReadTimeoutError|Connection reset by peer|TLS handshake timeout|i/o timeout|Connection timed out|unable to access 'https",
+  "diagnosis": "A network request failed or timed out.",
+  "advice": "Retrying. If it keeps failing, check the internet connection, VPN or proxy.",
+  "fix": { "action": "retry" },
+  "samples": [
+    "pip._vendor.urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='files.pythonhosted.org', port=443): Read timed out.",
+    "fatal: unable to access 'https://github.com/frenb/rl-roboracer.git/': Could not resolve host: github.com"
+  ],
+  "source": "curated"
+}

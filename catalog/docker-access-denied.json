@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/catalog-entry-1.json",
+  "id": "docker-access-denied",
+  "version": 1,
+  "order": 80,
+  "phases": ["docker-start"],
+  "pattern": "dockerDesktopLinuxEngine: Access is denied|permission denied while trying to connect to the Docker daemon",
+  "diagnosis": "Your account cannot use Docker yet. Docker Desktop added it to the docker-users group, which only takes effect at the next sign-in.",
+  "advice": "Sign out of Windows and back in, then run the installer again.",
+  "fix": { "action": "signout" },
+  "samples": ["error during connect: in the default daemon configuration on Windows, the docker client must be run with elevated privileges to connect: open //./pipe/dockerDesktopLinuxEngine: Access is denied."],
+  "source": "curated"
+}

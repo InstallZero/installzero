@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/catalog-entry-1.json",
+  "id": "python-traceback",
+  "version": 1,
+  "order": 200,
+  "phases": ["trainer"],
+  "pattern": "Traceback \\(most recent call last\\)",
+  "seen": "(?m)^[A-Za-z_][\\w.]*(Error|Exception)\\b[^\\n]*",
+  "diagnosis": "The trainer stopped with a Python error.",
+  "advice": "The error is shown above; the full log is rl_agent\\robotaxi.out. Include it if you report the problem.",
+  "fix": { "action": "none" },
+  "samples": ["Traceback (most recent call last):\n  File \"robotaxi.py\", line 1, in <module>\nKeyError: 'x'"],
+  "source": "curated"
+}

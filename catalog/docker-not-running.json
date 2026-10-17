@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/catalog-entry-1.json",
+  "id": "docker-not-running",
+  "version": 1,
+  "order": 100,
+  "phases": ["docker-start"],
+  "pattern": "dockerDesktopLinuxEngine: The system cannot find the file specified|Is the docker daemon running|Cannot connect to the Docker daemon",
+  "diagnosis": "Docker Desktop's engine is not running and did not start.",
+  "advice": "Open Docker Desktop from the Start menu, answer any prompts it shows, wait until it says \"Engine running\", then re-run.",
+  "fix": { "action": "none" },
+  "samples": ["error during connect: Get \"http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.47/info\": open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified."],
+  "source": "curated"
+}

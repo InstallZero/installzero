@@ -1,0 +1,14 @@
+{
+    "id":  "jenkins",
+    "repo":  "jenkinsci/jenkins",
+    "include":  [
+
+                ],
+    "recipe":  "jenkins.sh",
+    "target":  "/var/lib/jenkins",
+    "ready":  "curl -fsS -o /dev/null http://localhost:8095/login",
+    "ready_timeout_sec":  420,
+    "remove":  [
+
+               ]
+}

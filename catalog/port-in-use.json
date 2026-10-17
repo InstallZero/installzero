@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/catalog-entry-1.json",
+  "id": "port-in-use",
+  "version": 1,
+  "order": 70,
+  "phases": ["compose-up", "unity-client"],
+  "pattern": "Ports are not available|port is already allocated|bind: (address already in use|Only one usage of each socket address|An attempt was made to access a socket)|SocketException[^\\n]*(Address already in use|Only one usage)",
+  "diagnosis": "Another program is already using a port this stack needs.",
+  "advice": "Stop the program using the port, then re-run.",
+  "fix": { "action": "port-owner" },
+  "samples": [
+    "Error response from daemon: Ports are not available: exposing port TCP 0.0.0.0:80 -> 0.0.0.0:0: listen tcp 0.0.0.0:80: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.",
+    "Error response from daemon: driver failed programming external connectivity: Bind for 0.0.0.0:6006 failed: port is already allocated",
+    "System.Net.Sockets.SocketException (0x80004005): Only one usage of each socket address (protocol/network address/port) is normally permitted."
+  ],
+  "source": "curated"
+}

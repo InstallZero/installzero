@@ -1,0 +1,3602 @@
+﻿[
+    {
+        "repo":  "Significant-Gravitas/AutoGPT",
+        "category":  "agent",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.57,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.8,
+                        3,
+                        3
+                    ],
+        "stars":  187617,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "platform backend; frontend; Supabase stack; RabbitMQ; Redis"
+    },
+    {
+        "repo":  "firecrawl/firecrawl",
+        "category":  "agent",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.12,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        3,
+                        2.5
+                    ],
+        "stars":  192260,
+        "pushed":  "2026-10-16",
+        "license":  "AGPL-3.0",
+        "why":  "API; workers; Playwright service; Redis (was mendableai/firecrawl)"
+    },
+    {
+        "repo":  "OpenHands/OpenHands",
+        "category":  "agent",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.12,
+        "tier":  "T4",
+        "factors":  [
+                        2.4,
+                        2.2,
+                        2.3,
+                        2.6
+                    ],
+        "stars":  91086,
+        "pushed":  "2026-10-16",
+        "license":  "MIT",
+        "why":  "Docker socket; sandbox runtime image; LLM key; WSL on Windows (was All-Hands-AI/OpenHands)"
+    },
+    {
+        "repo":  "matomo-org/matomo",
+        "category":  "analytics",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  8.05,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        1.8,
+                        1.9,
+                        2.7
+                    ],
+        "stars":  21958,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-3.0",
+        "why":  "PHP; MySQL; web wizard; archiving cron; GeoIP DB"
+    },
+    {
+        "repo":  "plausible/community-edition",
+        "category":  "analytics",
+        "os":  "L",
+        "variant":  "docker",
+        "difficulty":  7.07,
+        "tier":  "T3",
+        "factors":  [
+                        2.3,
+                        1.2,
+                        2.1,
+                        2.5
+                    ],
+        "stars":  2903,
+        "pushed":  "2026-05-15",
+        "license":  "MIT",
+        "why":  "ClickHouse; Postgres; secret key; base URL"
+    },
+    {
+        "repo":  "m-bain/whisperX",
+        "category":  "audio",
+        "os":  "LW",
+        "variant":  "pip",
+        "difficulty":  8.73,
+        "tier":  "T4",
+        "factors":  [
+                        1.6,
+                        3,
+                        3,
+                        2.7
+                    ],
+        "stars":  24623,
+        "pushed":  "2026-09-26",
+        "license":  "BSD-2-Clause",
+        "why":  "cuDNN version conflict; pyannote gated with HF token and terms"
+    },
+    {
+        "repo":  "fishaudio/fish-speech",
+        "category":  "audio",
+        "os":  "LW",
+        "variant":  "pip",
+        "difficulty":  8.5,
+        "tier":  "T4",
+        "factors":  [
+                        2.1,
+                        3,
+                        3,
+                        1.9
+                    ],
+        "stars":  33221,
+        "pushed":  "2026-10-13",
+        "license":  "NOASSERTION",
+        "why":  "torch CUDA; compile option; checkpoints"
+    },
+    {
+        "repo":  "RVC-Project/Retrieval-based-Voice-Conversion-WebUI",
+        "category":  "audio",
+        "os":  "LW",
+        "variant":  "venv",
+        "difficulty":  8.05,
+        "tier":  "T4",
+        "factors":  [
+                        1.6,
+                        3,
+                        2.9,
+                        1.9
+                    ],
+        "stars":  38782,
+        "pushed":  "2026-08-04",
+        "license":  "MIT",
+        "why":  "per-vendor requirements; hubert and rmvpe assets"
+    },
+    {
+        "repo":  "ggml-org/whisper.cpp",
+        "category":  "audio",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  7.82,
+        "tier":  "T4",
+        "factors":  [
+                        2,
+                        3,
+                        3,
+                        1.1
+                    ],
+        "stars":  54443,
+        "pushed":  "2026-10-11",
+        "license":  "MIT",
+        "why":  "CMake with CUDA or Metal or Vulkan; ggml model download"
+    },
+    {
+        "repo":  "voicepaw/so-vits-svc-fork",
+        "category":  "audio",
+        "os":  "LWM",
+        "variant":  "pip",
+        "difficulty":  7.45,
+        "tier":  "T3",
+        "factors":  [
+                        1.6,
+                        3,
+                        2.2,
+                        1.8
+                    ],
+        "stars":  9333,
+        "pushed":  "2026-10-14",
+        "license":  "NOASSERTION",
+        "why":  "torch CUDA per OS; pretrained models"
+    },
+    {
+        "repo":  "Anjok07/ultimatevocalremovergui",
+        "category":  "audio",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  7.38,
+        "tier":  "T3",
+        "factors":  [
+                        1.6,
+                        3,
+                        2.2,
+                        1.7
+                    ],
+        "stars":  26655,
+        "pushed":  "2026-10-06",
+        "license":  "MIT",
+        "why":  "per-OS install paths; models downloaded in app"
+    },
+    {
+        "repo":  "Slicer/Slicer",
+        "category":  "bio-sci",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  9.1,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        3,
+                        3,
+                        2.2
+                    ],
+        "stars":  2665,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "superbuild of VTK; ITK; CTK; Qt"
+    },
+    {
+        "repo":  "Project-MONAI/MONAILabel",
+        "category":  "bio-sci",
+        "os":  "LW",
+        "variant":  "pip",
+        "difficulty":  8.95,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        3,
+                        2.6,
+                        2.7
+                    ],
+        "stars":  904,
+        "pushed":  "2026-10-15",
+        "license":  "Apache-2.0",
+        "why":  "server plus Slicer or OHIF client plugin; app download"
+    },
+    {
+        "repo":  "gcorso/DiffDock",
+        "category":  "bio-sci",
+        "os":  "L",
+        "variant":  "conda",
+        "difficulty":  8.8,
+        "tier":  "T4",
+        "factors":  [
+                        2.1,
+                        3,
+                        3,
+                        2.3
+                    ],
+        "stars":  1584,
+        "pushed":  "2025-05-02",
+        "license":  "MIT",
+        "why":  "torch-geometric wheels per CUDA; ESM embeddings"
+    },
+    {
+        "repo":  "YoshitakaMo/localcolabfold",
+        "category":  "bio-sci",
+        "os":  "LM",
+        "variant":  "script",
+        "difficulty":  8.8,
+        "tier":  "T4",
+        "factors":  [
+                        2.2,
+                        3,
+                        2.9,
+                        2.3
+                    ],
+        "stars":  884,
+        "pushed":  "2026-06-30",
+        "license":  "MIT",
+        "why":  "JAX CUDA wheels; per-OS installer; weights"
+    },
+    {
+        "repo":  "galaxyproject/galaxy",
+        "category":  "bio-sci",
+        "os":  "LM",
+        "variant":  "script",
+        "difficulty":  8.57,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.8,
+                        3,
+                        3
+                    ],
+        "stars":  1871,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "tool installs; job conf; conda resolution; admin user"
+    },
+    {
+        "repo":  "CellProfiler/CellProfiler",
+        "category":  "bio-sci",
+        "os":  "LWM",
+        "variant":  "pip",
+        "difficulty":  7.52,
+        "tier":  "T4",
+        "factors":  [
+                        2.1,
+                        3,
+                        1.5,
+                        2.1
+                    ],
+        "stars":  1137,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "Java JDK; wxPython per OS; exact Python"
+    },
+    {
+        "repo":  "openstack/devstack",
+        "category":  "cloud",
+        "os":  "L",
+        "variant":  "script",
+        "difficulty":  10,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        3,
+                        3,
+                        3
+                    ],
+        "stars":  2147,
+        "pushed":  "2026-10-14",
+        "license":  "Apache-2.0",
+        "why":  "local.conf; stack.sh; dozens of services; dedicated host"
+    },
+    {
+        "repo":  "bigbluebutton/bigbluebutton",
+        "category":  "comm",
+        "os":  "L",
+        "variant":  "script",
+        "difficulty":  10,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        3,
+                        3,
+                        3
+                    ],
+        "stars":  9244,
+        "pushed":  "2026-10-16",
+        "license":  "LGPL-3.0",
+        "why":  "exact Ubuntu 22.04; bbb-install; FreeSWITCH; TURN; Greenlight"
+    },
+    {
+        "repo":  "zulip/zulip",
+        "category":  "comm",
+        "os":  "L",
+        "variant":  "script",
+        "difficulty":  9.4,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.2,
+                        3,
+                        3
+                    ],
+        "stars":  26055,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "installer configures nginx; RabbitMQ; memcached; Postgres; supervisor"
+    },
+    {
+        "repo":  "jitsi/docker-jitsi-meet",
+        "category":  "comm",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.65,
+        "tier":  "T4",
+        "factors":  [
+                        2.5,
+                        1.7,
+                        3,
+                        3
+                    ],
+        "stars":  3617,
+        "pushed":  "2026-10-14",
+        "license":  "Apache-2.0",
+        "why":  "gen-passwords; PUBLIC_URL; UDP 10000; JVB advertise IPs"
+    },
+    {
+        "repo":  "element-hq/synapse",
+        "category":  "comm",
+        "os":  "L",
+        "variant":  "pip",
+        "difficulty":  8.57,
+        "tier":  "T4",
+        "factors":  [
+                        2.5,
+                        1.8,
+                        2.8,
+                        3
+                    ],
+        "stars":  4702,
+        "pushed":  "2026-10-16",
+        "license":  "AGPL-3.0",
+        "why":  "homeserver.yaml; Postgres; reverse proxy; .well-known delegation; coturn"
+    },
+    {
+        "repo":  "RocketChat/Rocket.Chat",
+        "category":  "comm",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  7.82,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.8,
+                        2.3,
+                        2.7
+                    ],
+        "stars":  46280,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "MongoDB replica set; setup wizard"
+    },
+    {
+        "repo":  "mattermost/docker",
+        "category":  "comm",
+        "os":  "L",
+        "variant":  "docker",
+        "difficulty":  7.38,
+        "tier":  "T3",
+        "factors":  [
+                        2.4,
+                        1.2,
+                        2.2,
+                        2.7
+                    ],
+        "stars":  534,
+        "pushed":  "2026-05-14",
+        "license":  "Apache-2.0",
+        "why":  "env file; volume ownership; nginx certs; first admin"
+    },
+    {
+        "repo":  "SuiteCRM/SuiteCRM-Core",
+        "category":  "crm",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  8.65,
+        "tier":  "T4",
+        "factors":  [
+                        2.9,
+                        2.3,
+                        2.3,
+                        2.7
+                    ],
+        "stars":  285,
+        "pushed":  "2026-10-15",
+        "license":  "AGPL-3.0",
+        "why":  "PHP and Angular build; web installer; cron (was salesagility/SuiteCRM-Core)"
+    },
+    {
+        "repo":  "twentyhq/twenty",
+        "category":  "crm",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.43,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        2.9,
+                        3
+                    ],
+        "stars":  58433,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "server; worker; Postgres; Redis; env secrets"
+    },
+    {
+        "repo":  "apache/airflow",
+        "category":  "data",
+        "os":  "LM",
+        "variant":  "pip",
+        "difficulty":  9.32,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        2.8,
+                        3,
+                        3
+                    ],
+        "stars":  47194,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "constraints file; scheduler; webserver; triggerer; DB init; admin user"
+    },
+    {
+        "repo":  "apache/druid",
+        "category":  "data",
+        "os":  "LM",
+        "variant":  "package",
+        "difficulty":  8.88,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        2.2,
+                        3,
+                        3
+                    ],
+        "stars":  14088,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "exact Java 17; five processes; ZooKeeper; deep storage config"
+    },
+    {
+        "repo":  "apache/superset",
+        "category":  "data",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.57,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.8,
+                        3,
+                        3
+                    ],
+        "stars":  75172,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "app; worker; beat; Redis; Postgres; frontend build; admin"
+    },
+    {
+        "repo":  "airbytehq/airbyte",
+        "category":  "data",
+        "os":  "LWM",
+        "variant":  "cli",
+        "difficulty":  8.57,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        1.7,
+                        3,
+                        2.6
+                    ],
+        "stars":  22234,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "abctl creates a kind cluster with Helm"
+    },
+    {
+        "repo":  "datahub-project/datahub",
+        "category":  "data",
+        "os":  "LWM",
+        "variant":  "cli",
+        "difficulty":  8.2,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.8,
+                        3,
+                        2.5
+                    ],
+        "stars":  12857,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "quickstart CLI; Kafka; ES; MySQL; GMS"
+    },
+    {
+        "repo":  "open-metadata/OpenMetadata",
+        "category":  "data",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.12,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        3,
+                        2.5
+                    ],
+        "stars":  15502,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "server; ingestion (Airflow); ES; MySQL"
+    },
+    {
+        "repo":  "confluentinc/cp-all-in-one",
+        "category":  "data",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.05,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        3,
+                        2.4
+                    ],
+        "stars":  1159,
+        "pushed":  "2026-09-17",
+        "license":  null,
+        "why":  "broker; schema registry; connect; ksqlDB; control center"
+    },
+    {
+        "repo":  "ToolJet/ToolJet",
+        "category":  "data",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  7.52,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        2.2,
+                        2.5
+                    ],
+        "stars":  41099,
+        "pushed":  "2026-10-16",
+        "license":  "AGPL-3.0",
+        "why":  "server; Postgres; PostgREST; secrets"
+    },
+    {
+        "repo":  "apache/doris",
+        "category":  "db",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  9.48,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.3,
+                        3,
+                        3
+                    ],
+        "stars":  16092,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "FE and BE build; ulimit and swap and vm settings; BE registration"
+    },
+    {
+        "repo":  "vitessio/vitess",
+        "category":  "db",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  9.25,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        2.2,
+                        3,
+                        3
+                    ],
+        "stars":  21388,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "etcd; vtctld; vttablets; vtgate; MySQL"
+    },
+    {
+        "repo":  "milvus-io/milvus",
+        "category":  "db",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  7.6,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.9,
+                        2.2,
+                        2.4
+                    ],
+        "stars":  46403,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "etcd; MinIO; standalone; GPU image variant"
+    },
+    {
+        "repo":  "penpot/penpot",
+        "category":  "design",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.2,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        3,
+                        2.6
+                    ],
+        "stars":  61242,
+        "pushed":  "2026-10-16",
+        "license":  "MPL-2.0",
+        "why":  "frontend; backend; exporter; Postgres; Valkey; flags"
+    },
+    {
+        "repo":  "o3de/o3de",
+        "category":  "desktop",
+        "os":  "LW",
+        "variant":  "source",
+        "difficulty":  10,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        3,
+                        3,
+                        3
+                    ],
+        "stars":  9760,
+        "pushed":  "2026-10-14",
+        "license":  "NOASSERTION",
+        "why":  "CMake; 3rdParty packages; Project Manager; engine registration"
+    },
+    {
+        "repo":  "LibreOffice/core",
+        "category":  "desktop",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  9.7,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.9,
+                        3,
+                        2.7
+                    ],
+        "stars":  4528,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-3.0",
+        "why":  "autogen options; external tarballs; Java; per-OS toolchain"
+    },
+    {
+        "repo":  "blender/blender",
+        "category":  "desktop",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  9.02,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        3,
+                        3,
+                        2.1
+                    ],
+        "stars":  20971,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "precompiled libraries download; CMake; CUDA or OptiX for Cycles"
+    },
+    {
+        "repo":  "xbmc/xbmc",
+        "category":  "desktop",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  9.02,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        3,
+                        3,
+                        2.1
+                    ],
+        "stars":  21339,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "depends build per platform; CMake"
+    },
+    {
+        "repo":  "obsproject/obs-studio",
+        "category":  "desktop",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  9.02,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        3,
+                        3,
+                        2.1
+                    ],
+        "stars":  77652,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-2.0",
+        "why":  "CMake presets per OS; deps download; NVENC"
+    },
+    {
+        "repo":  "FreeCAD/FreeCAD",
+        "category":  "desktop",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  8.95,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        2.9,
+                        3,
+                        2.1
+                    ],
+        "stars":  34392,
+        "pushed":  "2026-10-16",
+        "license":  "LGPL-2.1",
+        "why":  "OpenCascade; Qt; Coin; pixi or conda env"
+    },
+    {
+        "repo":  "HandBrake/HandBrake",
+        "category":  "desktop",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  8.57,
+        "tier":  "T4",
+        "factors":  [
+                        2.5,
+                        3,
+                        3,
+                        1.6
+                    ],
+        "stars":  24693,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "contrib build; NVENC and QSV options"
+    },
+    {
+        "repo":  "godotengine/godot",
+        "category":  "desktop",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  7.68,
+        "tier":  "T4",
+        "factors":  [
+                        2,
+                        2.8,
+                        2.5,
+                        1.6
+                    ],
+        "stars":  118528,
+        "pushed":  "2026-10-16",
+        "license":  "MIT",
+        "why":  "SCons per platform; export templates"
+    },
+    {
+        "repo":  "microsoft/PowerToys",
+        "category":  "desktop",
+        "os":  "W",
+        "variant":  "source",
+        "difficulty":  7.6,
+        "tier":  "T4",
+        "factors":  [
+                        2.5,
+                        2.2,
+                        2,
+                        2.1
+                    ],
+        "stars":  139409,
+        "pushed":  "2026-10-16",
+        "license":  "MIT",
+        "why":  "Visual Studio workloads from .vsconfig; exact Windows SDK"
+    },
+    {
+        "repo":  "microsoft/terminal",
+        "category":  "desktop",
+        "os":  "W",
+        "variant":  "source",
+        "difficulty":  7.22,
+        "tier":  "T3",
+        "factors":  [
+                        2.5,
+                        2.2,
+                        2,
+                        1.6
+                    ],
+        "stars":  105176,
+        "pushed":  "2026-10-16",
+        "license":  "MIT",
+        "why":  "Visual Studio workloads; Windows SDK; NuGet restore"
+    },
+    {
+        "repo":  "gitlabhq/gitlabhq",
+        "category":  "devops",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  10,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        3,
+                        3,
+                        3
+                    ],
+        "stars":  24551,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "source install: Ruby; Go; Node; Gitaly; Workhorse; Postgres; Redis; nginx"
+    },
+    {
+        "repo":  "backstage/backstage",
+        "category":  "devops",
+        "os":  "LWM",
+        "variant":  "npm",
+        "difficulty":  7.9,
+        "tier":  "T4",
+        "factors":  [
+                        2.1,
+                        2.3,
+                        1.8,
+                        3
+                    ],
+        "stars":  34638,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "Node exact; yarn; app-config; GitHub integration token"
+    },
+    {
+        "repo":  "concourse/concourse",
+        "category":  "devops",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  7.6,
+        "tier":  "T4",
+        "factors":  [
+                        2.4,
+                        1.7,
+                        2.1,
+                        2.6
+                    ],
+        "stars":  7920,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "key generation; web and worker; privileged worker"
+    },
+    {
+        "repo":  "SonarSource/sonarqube",
+        "category":  "devops",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  7.38,
+        "tier":  "T3",
+        "factors":  [
+                        2.5,
+                        1.8,
+                        1.5,
+                        2.7
+                    ],
+        "stars":  11073,
+        "pushed":  "2026-10-16",
+        "license":  "LGPL-3.0",
+        "why":  "vm.max_map_count; Postgres; first login password change"
+    },
+    {
+        "repo":  "jenkinsci/jenkins",
+        "category":  "devops",
+        "os":  "LWM",
+        "variant":  "package",
+        "difficulty":  7.3,
+        "tier":  "T3",
+        "factors":  [
+                        2.5,
+                        1.7,
+                        1.2,
+                        3
+                    ],
+        "stars":  26670,
+        "pushed":  "2026-10-16",
+        "license":  "MIT",
+        "why":  "Java exact; service; initial admin password; plugin wizard"
+    },
+    {
+        "repo":  "oracle/opengrok",
+        "category":  "devops",
+        "os":  "LWM",
+        "variant":  "package",
+        "difficulty":  7.15,
+        "tier":  "T3",
+        "factors":  [
+                        2.3,
+                        2.3,
+                        1,
+                        2.6
+                    ],
+        "stars":  4998,
+        "pushed":  "2026-10-13",
+        "license":  "NOASSERTION",
+        "why":  "Tomcat; universal-ctags; indexer run; config"
+    },
+    {
+        "repo":  "outline/outline",
+        "category":  "docs",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.43,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        2.9,
+                        3
+                    ],
+        "stars":  40926,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "OIDC or Slack or Google auth required; S3; secrets"
+    },
+    {
+        "repo":  "paperless-ngx/paperless-ngx",
+        "category":  "docs",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.05,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        2.8,
+                        2.6
+                    ],
+        "stars":  46774,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-3.0",
+        "why":  "web; worker; Redis; DB; Tika; Gotenberg; superuser"
+    },
+    {
+        "repo":  "toeverything/AFFiNE",
+        "category":  "docs",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  7.6,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        2.3,
+                        2.5
+                    ],
+        "stars":  73581,
+        "pushed":  "2026-10-12",
+        "license":  "NOASSERTION",
+        "why":  "server; Postgres; Redis; env"
+    },
+    {
+        "repo":  "magento/magento2",
+        "category":  "ecommerce",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  9.85,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.8,
+                        3,
+                        3
+                    ],
+        "stars":  12205,
+        "pushed":  "2026-10-16",
+        "license":  "OSL-3.0",
+        "why":  "OpenSearch; exact PHP extensions; composer keys from Adobe Marketplace"
+    },
+    {
+        "repo":  "shopware/shopware",
+        "category":  "ecommerce",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  8.65,
+        "tier":  "T4",
+        "factors":  [
+                        2.9,
+                        2.3,
+                        2.4,
+                        2.6
+                    ],
+        "stars":  3450,
+        "pushed":  "2026-10-16",
+        "license":  "MIT",
+        "why":  "PHP; composer; Node build; OpenSearch optional; installer"
+    },
+    {
+        "repo":  "PrestaShop/PrestaShop",
+        "category":  "ecommerce",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  8.27,
+        "tier":  "T4",
+        "factors":  [
+                        2.9,
+                        2.3,
+                        1.8,
+                        2.7
+                    ],
+        "stars":  9227,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "PHP; composer; Node build; web installer; admin folder rename"
+    },
+    {
+        "repo":  "saleor/saleor-platform",
+        "category":  "ecommerce",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  7.98,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        2.8,
+                        2.5
+                    ],
+        "stars":  772,
+        "pushed":  "2026-06-02",
+        "license":  "BSD-3-Clause",
+        "why":  "API; dashboard; Postgres; Valkey; Jaeger; Mailpit"
+    },
+    {
+        "repo":  "medusajs/medusa",
+        "category":  "ecommerce",
+        "os":  "LWM",
+        "variant":  "npm",
+        "difficulty":  7.6,
+        "tier":  "T4",
+        "factors":  [
+                        2.1,
+                        1.8,
+                        2.3,
+                        2.6
+                    ],
+        "stars":  36774,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "Postgres; Redis; admin user; migrations"
+    },
+    {
+        "repo":  "overhangio/tutor",
+        "category":  "edu",
+        "os":  "L",
+        "variant":  "pip",
+        "difficulty":  8.65,
+        "tier":  "T4",
+        "factors":  [
+                        2.4,
+                        1.8,
+                        3,
+                        3
+                    ],
+        "stars":  1128,
+        "pushed":  "2026-10-15",
+        "license":  "AGPL-3.0",
+        "why":  "twenty services; MFEs; image builds; config save"
+    },
+    {
+        "repo":  "moodle/moodle",
+        "category":  "edu",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  8.35,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.4,
+                        1.7,
+                        2.7
+                    ],
+        "stars":  7489,
+        "pushed":  "2026-10-13",
+        "license":  "GPL-3.0",
+        "why":  "PHP extensions; moodledata; cron; web installer"
+    },
+    {
+        "repo":  "frappe/erpnext",
+        "category":  "erp",
+        "os":  "L",
+        "variant":  "script",
+        "difficulty":  9.85,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.8,
+                        3,
+                        3
+                    ],
+        "stars":  40257,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-3.0",
+        "why":  "bench; MariaDB settings; three Redis; Node and yarn; wkhtmltopdf"
+    },
+    {
+        "repo":  "odoo/odoo",
+        "category":  "erp",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  9.1,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        2.9,
+                        2.4,
+                        2.7
+                    ],
+        "stars":  55100,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "patched wkhtmltopdf 0.12.6; Postgres role; addons path"
+    },
+    {
+        "repo":  "invoiceninja/invoiceninja",
+        "category":  "erp",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  8.95,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.3,
+                        2.3,
+                        3
+                    ],
+        "stars":  10287,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "PHP extensions; queue worker; cron; PDF engine"
+    },
+    {
+        "repo":  "apache/ofbiz-framework",
+        "category":  "erp",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  7.45,
+        "tier":  "T3",
+        "factors":  [
+                        2.1,
+                        2.8,
+                        1.8,
+                        1.9
+                    ],
+        "stars":  1132,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "exact JDK 17; Gradle; demo data load"
+    },
+    {
+        "repo":  "AzerothCore/azerothcore-wotlk",
+        "category":  "game",
+        "os":  "LW",
+        "variant":  "source",
+        "difficulty":  9.4,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        2.4,
+                        3,
+                        3
+                    ],
+        "stars":  9053,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-2.0",
+        "why":  "client data extraction (maps; vmaps; mmaps); MySQL; auth and world servers; realmlist"
+    },
+    {
+        "repo":  "TrinityCore/TrinityCore",
+        "category":  "game",
+        "os":  "LW",
+        "variant":  "source",
+        "difficulty":  9.4,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        2.4,
+                        3,
+                        3
+                    ],
+        "stars":  10829,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-2.0",
+        "why":  "client data extractors; MySQL; TDB import; realmlist"
+    },
+    {
+        "repo":  "pterodactyl/panel",
+        "category":  "game",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  9.25,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.3,
+                        2.7,
+                        3
+                    ],
+        "stars":  9341,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "panel plus Wings daemon plus Docker; queue worker; cron; node token"
+    },
+    {
+        "repo":  "RPCS3/rpcs3",
+        "category":  "game",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  9.1,
+        "tier":  "T4",
+        "factors":  [
+                        2.2,
+                        3,
+                        3,
+                        2.6
+                    ],
+        "stars":  20096,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-2.0",
+        "why":  "PS3 firmware from Sony site; Vulkan SDK; Qt build"
+    },
+    {
+        "repo":  "ostris/ai-toolkit",
+        "category":  "gen-media",
+        "os":  "LW",
+        "variant":  "pip",
+        "difficulty":  9.1,
+        "tier":  "T4",
+        "factors":  [
+                        2.1,
+                        3,
+                        3,
+                        2.7
+                    ],
+        "stars":  12330,
+        "pushed":  "2026-10-16",
+        "license":  "MIT",
+        "why":  "FLUX gated weights; HF token; YAML job configs"
+    },
+    {
+        "repo":  "black-forest-labs/flux",
+        "category":  "gen-media",
+        "os":  "LW",
+        "variant":  "pip",
+        "difficulty":  8.95,
+        "tier":  "T4",
+        "factors":  [
+                        2.1,
+                        3,
+                        3,
+                        2.5
+                    ],
+        "stars":  26020,
+        "pushed":  "2025-07-31",
+        "license":  "Apache-2.0",
+        "why":  "gated weights with license acceptance; HF token"
+    },
+    {
+        "repo":  "bmaltais/kohya_ss",
+        "category":  "gen-media",
+        "os":  "LW",
+        "variant":  "script",
+        "difficulty":  8.65,
+        "tier":  "T4",
+        "factors":  [
+                        1.6,
+                        3,
+                        3,
+                        2.6
+                    ],
+        "stars":  12632,
+        "pushed":  "2026-07-31",
+        "license":  "Apache-2.0",
+        "why":  "accelerate config wizard; exact torch and xformers; base models"
+    },
+    {
+        "repo":  "hacksider/Deep-Live-Cam",
+        "category":  "gen-media",
+        "os":  "LWM",
+        "variant":  "venv",
+        "difficulty":  8.43,
+        "tier":  "T4",
+        "factors":  [
+                        2.1,
+                        3,
+                        2.4,
+                        2.4
+                    ],
+        "stars":  97094,
+        "pushed":  "2026-10-09",
+        "license":  "AGPL-3.0",
+        "why":  "onnxruntime GPU per vendor and OS; ffmpeg; models in exact folder"
+    },
+    {
+        "repo":  "leejet/stable-diffusion.cpp",
+        "category":  "gen-media",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  8.27,
+        "tier":  "T4",
+        "factors":  [
+                        2,
+                        3,
+                        3,
+                        1.7
+                    ],
+        "stars":  7708,
+        "pushed":  "2026-10-16",
+        "license":  "MIT",
+        "why":  "CMake per backend; model conversion"
+    },
+    {
+        "repo":  "invoke-ai/InvokeAI",
+        "category":  "gen-media",
+        "os":  "LWM",
+        "variant":  "installer",
+        "difficulty":  8.12,
+        "tier":  "T4",
+        "factors":  [
+                        1.7,
+                        3,
+                        2.9,
+                        1.9
+                    ],
+        "stars":  28699,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "launcher per OS and GPU; model manager; root folder"
+    },
+    {
+        "repo":  "KlingAIResearch/LivePortrait",
+        "category":  "gen-media",
+        "os":  "LWM",
+        "variant":  "venv",
+        "difficulty":  7.98,
+        "tier":  "T4",
+        "factors":  [
+                        2.1,
+                        3,
+                        2.4,
+                        1.8
+                    ],
+        "stars":  19253,
+        "pushed":  "2026-06-01",
+        "license":  "NOASSERTION",
+        "why":  "X-Pose ops build; per-OS requirements; weights (was KwaiVGI/LivePortrait)"
+    },
+    {
+        "repo":  "lllyasviel/stable-diffusion-webui-forge",
+        "category":  "gen-media",
+        "os":  "LW",
+        "variant":  "script",
+        "difficulty":  7.6,
+        "tier":  "T4",
+        "factors":  [
+                        1.6,
+                        3,
+                        2.4,
+                        1.8
+                    ],
+        "stars":  13072,
+        "pushed":  "2025-07-30",
+        "license":  "AGPL-3.0",
+        "why":  "exact Python; torch CUDA; checkpoints"
+    },
+    {
+        "repo":  "vladmandic/sdnext",
+        "category":  "gen-media",
+        "os":  "LWM",
+        "variant":  "script",
+        "difficulty":  7.6,
+        "tier":  "T4",
+        "factors":  [
+                        1.6,
+                        3,
+                        2.4,
+                        1.8
+                    ],
+        "stars":  7354,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "backends for CUDA; ROCm; IPEX; DirectML; OpenVINO"
+    },
+    {
+        "repo":  "AUTOMATIC1111/stable-diffusion-webui",
+        "category":  "gen-media",
+        "os":  "LWM",
+        "variant":  "script",
+        "difficulty":  7.6,
+        "tier":  "T4",
+        "factors":  [
+                        1.6,
+                        3,
+                        2.4,
+                        1.8
+                    ],
+        "stars":  165071,
+        "pushed":  "2026-03-01",
+        "license":  "AGPL-3.0",
+        "why":  "calibration: exact Python 3.10.6; torch CUDA; checkpoints"
+    },
+    {
+        "repo":  "facefusion/facefusion",
+        "category":  "gen-media",
+        "os":  "LWM",
+        "variant":  "script",
+        "difficulty":  7.52,
+        "tier":  "T4",
+        "factors":  [
+                        1.6,
+                        3,
+                        2.3,
+                        1.8
+                    ],
+        "stars":  30294,
+        "pushed":  "2026-10-09",
+        "license":  "NOASSERTION",
+        "why":  "installer picks onnxruntime per accelerator"
+    },
+    {
+        "repo":  "mcmonkeyprojects/SwarmUI",
+        "category":  "gen-media",
+        "os":  "LWM",
+        "variant":  "script",
+        "difficulty":  7.38,
+        "tier":  "T3",
+        "factors":  [
+                        1.6,
+                        3,
+                        2.5,
+                        1.4
+                    ],
+        "stars":  4675,
+        "pushed":  "2026-10-16",
+        "license":  "MIT",
+        "why":  ".NET app plus ComfyUI backend; model folders"
+    },
+    {
+        "repo":  "openemr/openemr",
+        "category":  "health",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  8.27,
+        "tier":  "T4",
+        "factors":  [
+                        2.9,
+                        2.3,
+                        1.8,
+                        2.7
+                    ],
+        "stars":  5530,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-3.0",
+        "why":  "PHP extensions; Node build; setup wizard; site config"
+    },
+    {
+        "repo":  "zammad/zammad",
+        "category":  "helpdesk",
+        "os":  "L",
+        "variant":  "docker",
+        "difficulty":  8.43,
+        "tier":  "T4",
+        "factors":  [
+                        2.4,
+                        1.8,
+                        3,
+                        2.7
+                    ],
+        "stars":  6015,
+        "pushed":  "2026-10-16",
+        "license":  "AGPL-3.0",
+        "why":  "Elasticsearch; Postgres; Redis; memcached; websocket; scheduler"
+    },
+    {
+        "repo":  "wrf-model/WRF",
+        "category":  "hpc",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  9.62,
+        "tier":  "T4",
+        "factors":  [
+                        2.7,
+                        2.8,
+                        3,
+                        3
+                    ],
+        "stars":  1781,
+        "pushed":  "2026-10-01",
+        "license":  "NOASSERTION",
+        "why":  "NetCDF and HDF5 exact builds; WPS; static geography data; namelists"
+    },
+    {
+        "repo":  "lammps/lammps",
+        "category":  "hpc",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  9.4,
+        "tier":  "T4",
+        "factors":  [
+                        2.7,
+                        3,
+                        3,
+                        2.5
+                    ],
+        "stars":  3099,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-2.0",
+        "why":  "CMake packages; MPI; GPU or Kokkos"
+    },
+    {
+        "repo":  "cp2k/cp2k",
+        "category":  "hpc",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  9.4,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        2.6,
+                        3,
+                        3
+                    ],
+        "stars":  1223,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-2.0",
+        "why":  "toolchain script builds about 20 libraries"
+    },
+    {
+        "repo":  "OpenFOAM/OpenFOAM-dev",
+        "category":  "hpc",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  9.4,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        2.4,
+                        3,
+                        3
+                    ],
+        "stars":  2271,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "ThirdParty build; bashrc sourcing"
+    },
+    {
+        "repo":  "FEniCS/dolfinx",
+        "category":  "hpc",
+        "os":  "LM",
+        "variant":  "source",
+        "difficulty":  8.73,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        2.4,
+                        3,
+                        2.3
+                    ],
+        "stars":  1225,
+        "pushed":  "2026-10-16",
+        "license":  "LGPL-3.0",
+        "why":  "PETSc; Basix; FFCx versions must agree"
+    },
+    {
+        "repo":  "su2code/SU2",
+        "category":  "hpc",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  8.27,
+        "tier":  "T4",
+        "factors":  [
+                        2.1,
+                        2.3,
+                        3,
+                        2.3
+                    ],
+        "stars":  1825,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "meson build; MPI; env vars"
+    },
+    {
+        "repo":  "freeipa/freeipa",
+        "category":  "identity",
+        "os":  "L",
+        "variant":  "package",
+        "difficulty":  9.78,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.7,
+                        3,
+                        3
+                    ],
+        "stars":  1295,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-3.0",
+        "why":  "FQDN and DNS; Kerberos; ipa-server-install"
+    },
+    {
+        "repo":  "goauthentik/authentik",
+        "category":  "identity",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.27,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        2.7,
+                        3
+                    ],
+        "stars":  25983,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "server; worker; Postgres; Redis; secret key; initial setup flow"
+    },
+    {
+        "repo":  "netbox-community/netbox",
+        "category":  "infra",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  8.5,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.2,
+                        2.2,
+                        2.6
+                    ],
+        "stars":  21710,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "Postgres; Redis; gunicorn systemd; nginx; superuser"
+    },
+    {
+        "repo":  "kubeflow/community-distribution",
+        "category":  "k8s",
+        "os":  "L",
+        "variant":  "kustomize",
+        "difficulty":  10,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        3,
+                        3,
+                        3
+                    ],
+        "stars":  1044,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "exact kustomize and Kubernetes; Istio; Dex; Knative; many pods (was kubeflow/manifests)"
+    },
+    {
+        "repo":  "kubernetes-sigs/kubespray",
+        "category":  "k8s",
+        "os":  "L",
+        "variant":  "ansible",
+        "difficulty":  10,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        3,
+                        3,
+                        3
+                    ],
+        "stars":  18797,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "inventory; Ansible exact; several hosts or VMs"
+    },
+    {
+        "repo":  "kserve/kserve",
+        "category":  "k8s",
+        "os":  "L",
+        "variant":  "k8s",
+        "difficulty":  9.93,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.9,
+                        3,
+                        3
+                    ],
+        "stars":  6123,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "cert-manager; Knative or raw mode; Istio; version matrix"
+    },
+    {
+        "repo":  "GoogleCloudPlatform/microservices-demo",
+        "category":  "k8s",
+        "os":  "LWM",
+        "variant":  "k8s",
+        "difficulty":  8.5,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        1.7,
+                        3,
+                        2.5
+                    ],
+        "stars":  21058,
+        "pushed":  "2026-10-12",
+        "license":  "Apache-2.0",
+        "why":  "cluster; skaffold builds eleven services"
+    },
+    {
+        "repo":  "argoproj/argo-cd",
+        "category":  "k8s",
+        "os":  "LWM",
+        "variant":  "k8s",
+        "difficulty":  8.35,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        1.7,
+                        2.6,
+                        2.7
+                    ],
+        "stars":  24419,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "cluster; CRDs; port-forward; initial admin secret; CLI login"
+    },
+    {
+        "repo":  "infiniflow/ragflow",
+        "category":  "llm-app",
+        "os":  "LM",
+        "variant":  "docker",
+        "difficulty":  9.32,
+        "tier":  "T4",
+        "factors":  [
+                        2.5,
+                        2.6,
+                        3,
+                        3
+                    ],
+        "stars":  92349,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "vm.max_map_count; Elasticsearch; MinIO; MySQL; GPU image variant"
+    },
+    {
+        "repo":  "netease-youdao/QAnything",
+        "category":  "llm-app",
+        "os":  "LW",
+        "variant":  "docker",
+        "difficulty":  9.1,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        3,
+                        3,
+                        2.5
+                    ],
+        "stars":  14203,
+        "pushed":  "2026-09-22",
+        "license":  "AGPL-3.0",
+        "why":  "GPU containers; Milvus; ES; embedding and rerank models"
+    },
+    {
+        "repo":  "langgenius/dify",
+        "category":  "llm-app",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  9.02,
+        "tier":  "T4",
+        "factors":  [
+                        2.4,
+                        2.3,
+                        3,
+                        3
+                    ],
+        "stars":  158678,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "ten containers; sandbox; plugin daemon; provider keys in UI"
+    },
+    {
+        "repo":  "chatchat-space/Langchain-Chatchat",
+        "category":  "llm-app",
+        "os":  "LW",
+        "variant":  "pip",
+        "difficulty":  8.57,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        2.6,
+                        2.6,
+                        2.6
+                    ],
+        "stars":  38690,
+        "pushed":  "2025-11-10",
+        "license":  "Apache-2.0",
+        "why":  "model platform (Xinference) plus app; config init; knowledge base init"
+    },
+    {
+        "repo":  "langfuse/langfuse",
+        "category":  "llm-app",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.5,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        3,
+                        3
+                    ],
+        "stars":  35938,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "ClickHouse; Redis; MinIO; Postgres; worker; many env values"
+    },
+    {
+        "repo":  "LibreChat-AI/LibreChat",
+        "category":  "llm-app",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.5,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        3,
+                        3
+                    ],
+        "stars":  45833,
+        "pushed":  "2026-10-16",
+        "license":  "MIT",
+        "why":  "Mongo; Meilisearch; RAG API; pgvector; librechat.yaml (was danny-avila/LibreChat)"
+    },
+    {
+        "repo":  "lobehub/lobehub",
+        "category":  "llm-app",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.43,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        2.9,
+                        3
+                    ],
+        "stars":  83282,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "server DB mode: Postgres; MinIO; Casdoor auth; S3 settings (was lobehub/lobe-chat)"
+    },
+    {
+        "repo":  "zylon-ai/private-gpt",
+        "category":  "llm-app",
+        "os":  "LWM",
+        "variant":  "poetry",
+        "difficulty":  8.12,
+        "tier":  "T4",
+        "factors":  [
+                        2.1,
+                        3,
+                        2.5,
+                        1.9
+                    ],
+        "stars":  57590,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "poetry extras; llama-cpp CUDA or Metal build; profiles"
+    },
+    {
+        "repo":  "oobabooga/textgen",
+        "category":  "llm-app",
+        "os":  "LWM",
+        "variant":  "script",
+        "difficulty":  7.9,
+        "tier":  "T4",
+        "factors":  [
+                        1.7,
+                        3,
+                        2.5,
+                        2
+                    ],
+        "stars":  47734,
+        "pushed":  "2026-08-17",
+        "license":  "AGPL-3.0",
+        "why":  "one-click installer per OS and GPU vendor; several loaders; model downloads (was oobabooga/text-generation-webui)"
+    },
+    {
+        "repo":  "NVIDIA/TensorRT-LLM",
+        "category":  "llm-serving",
+        "os":  "LW",
+        "variant":  "docker",
+        "difficulty":  9.93,
+        "tier":  "T4",
+        "factors":  [
+                        2.9,
+                        3,
+                        3,
+                        3
+                    ],
+        "stars":  14838,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "engines built per GPU; exact CUDA and TensorRT; gated weights; Triton backend"
+    },
+    {
+        "repo":  "vllm-project/vllm",
+        "category":  "llm-serving",
+        "os":  "LW",
+        "variant":  "pip",
+        "difficulty":  9.33,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        3,
+                        3,
+                        2.8
+                    ],
+        "stars":  93959,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "CUDA wheels and driver floor; gated HF weights; OpenAI-compatible server flags"
+    },
+    {
+        "repo":  "mlc-ai/mlc-llm",
+        "category":  "llm-serving",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  8.88,
+        "tier":  "T4",
+        "factors":  [
+                        2.1,
+                        3,
+                        3,
+                        2.4
+                    ],
+        "stars":  23248,
+        "pushed":  "2026-10-06",
+        "license":  "Apache-2.0",
+        "why":  "TVM build; per-platform targets; weights compiled per device"
+    },
+    {
+        "repo":  "mudler/LocalAI",
+        "category":  "llm-serving",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.88,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        3,
+                        2.7,
+                        2.5
+                    ],
+        "stars":  49589,
+        "pushed":  "2026-10-16",
+        "license":  "MIT",
+        "why":  "backend images per GPU vendor; model gallery YAML"
+    },
+    {
+        "repo":  "theroyallab/tabbyAPI",
+        "category":  "llm-serving",
+        "os":  "LW",
+        "variant":  "script",
+        "difficulty":  8.88,
+        "tier":  "T4",
+        "factors":  [
+                        2.1,
+                        3,
+                        3,
+                        2.4
+                    ],
+        "stars":  1478,
+        "pushed":  "2026-10-16",
+        "license":  "AGPL-3.0",
+        "why":  "exllamav2 wheels matched to CUDA and torch; config.yml"
+    },
+    {
+        "repo":  "InternLM/lmdeploy",
+        "category":  "llm-serving",
+        "os":  "LW",
+        "variant":  "pip",
+        "difficulty":  8.8,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        3,
+                        3,
+                        2.1
+                    ],
+        "stars":  8107,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "TurboMind engine; CUDA-matched wheels; weight conversion"
+    },
+    {
+        "repo":  "xorbitsai/inference",
+        "category":  "llm-serving",
+        "os":  "LM",
+        "variant":  "pip",
+        "difficulty":  8.73,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        3,
+                        3,
+                        2
+                    ],
+        "stars":  9612,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "supervisor and workers; several engines with own CUDA needs"
+    },
+    {
+        "repo":  "exo-explore/exo",
+        "category":  "llm-serving",
+        "os":  "LM",
+        "variant":  "source",
+        "difficulty":  8.57,
+        "tier":  "T4",
+        "factors":  [
+                        1.8,
+                        3,
+                        3,
+                        2.3
+                    ],
+        "stars":  47932,
+        "pushed":  "2026-10-13",
+        "license":  "Apache-2.0",
+        "why":  "device cluster discovery; MLX or tinygrad per platform"
+    },
+    {
+        "repo":  "ggml-org/llama.cpp",
+        "category":  "llm-serving",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  8.43,
+        "tier":  "T4",
+        "factors":  [
+                        2.1,
+                        3,
+                        3,
+                        1.8
+                    ],
+        "stars":  131437,
+        "pushed":  "2026-10-16",
+        "license":  "MIT",
+        "why":  "CMake with CUDA or Metal or Vulkan per platform; GGUF download; llama-server flags"
+    },
+    {
+        "repo":  "NVIDIA-NeMo/Speech",
+        "category":  "llm-train",
+        "os":  "L",
+        "variant":  "docker",
+        "difficulty":  9.85,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        3,
+                        3,
+                        3
+                    ],
+        "stars":  18592,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "apex; Transformer Engine; megatron-core; NGC container (was NVIDIA/NeMo)"
+    },
+    {
+        "repo":  "NVIDIA/Megatron-LM",
+        "category":  "llm-train",
+        "os":  "L",
+        "variant":  "docker",
+        "difficulty":  9.78,
+        "tier":  "T4",
+        "factors":  [
+                        2.7,
+                        3,
+                        3,
+                        3
+                    ],
+        "stars":  18170,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "NGC container; apex and Transformer Engine; data preprocessing"
+    },
+    {
+        "repo":  "EleutherAI/gpt-neox",
+        "category":  "llm-train",
+        "os":  "L",
+        "variant":  "pip",
+        "difficulty":  9.78,
+        "tier":  "T4",
+        "factors":  [
+                        2.7,
+                        3,
+                        3,
+                        3
+                    ],
+        "stars":  7471,
+        "pushed":  "2026-10-11",
+        "license":  "Apache-2.0",
+        "why":  "fused kernels build; DeepSpeed fork; config YAMLs"
+    },
+    {
+        "repo":  "axolotl-ai-cloud/axolotl",
+        "category":  "llm-train",
+        "os":  "L",
+        "variant":  "pip",
+        "difficulty":  9.48,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        3,
+                        3,
+                        3
+                    ],
+        "stars":  12577,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "flash-attn and DeepSpeed builds; YAML configs; gated models"
+    },
+    {
+        "repo":  "hiyouga/LlamaFactory",
+        "category":  "llm-train",
+        "os":  "LW",
+        "variant":  "pip",
+        "difficulty":  9.25,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        3,
+                        3,
+                        2.7
+                    ],
+        "stars":  75522,
+        "pushed":  "2026-10-10",
+        "license":  "Apache-2.0",
+        "why":  "torch CUDA; bitsandbytes and flash-attn; gated base models; WebUI (was hiyouga/LLaMA-Factory)"
+    },
+    {
+        "repo":  "unslothai/unsloth",
+        "category":  "llm-train",
+        "os":  "LW",
+        "variant":  "pip",
+        "difficulty":  9.02,
+        "tier":  "T4",
+        "factors":  [
+                        2.1,
+                        3,
+                        3,
+                        2.6
+                    ],
+        "stars":  78143,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "exact torch and xformers and triton combos; Windows triton"
+    },
+    {
+        "repo":  "mail-in-a-box/mailinabox",
+        "category":  "mail",
+        "os":  "L",
+        "variant":  "script",
+        "difficulty":  10,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        3,
+                        3,
+                        3
+                    ],
+        "stars":  15440,
+        "pushed":  "2026-09-26",
+        "license":  "CC0-1.0",
+        "why":  "fresh Ubuntu 22.04 exact; whole-box setup"
+    },
+    {
+        "repo":  "iredmail/iRedMail",
+        "category":  "mail",
+        "os":  "L",
+        "variant":  "script",
+        "difficulty":  9.55,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.4,
+                        3,
+                        3
+                    ],
+        "stars":  1848,
+        "pushed":  "2026-10-14",
+        "license":  "GPL-3.0",
+        "why":  "Postfix; Dovecot; Amavis; SOGo; DNS records"
+    },
+    {
+        "repo":  "mailcow/mailcow-dockerized",
+        "category":  "mail",
+        "os":  "L",
+        "variant":  "docker",
+        "difficulty":  8.35,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        1.2,
+                        3,
+                        3
+                    ],
+        "stars":  13623,
+        "pushed":  "2026-10-15",
+        "license":  "GPL-3.0",
+        "why":  "generate_config; DNS records; many containers; admin password change"
+    },
+    {
+        "repo":  "docker-mailserver/docker-mailserver",
+        "category":  "mail",
+        "os":  "L",
+        "variant":  "docker",
+        "difficulty":  7.98,
+        "tier":  "T4",
+        "factors":  [
+                        2.5,
+                        1.2,
+                        2.6,
+                        3
+                    ],
+        "stars":  19604,
+        "pushed":  "2026-10-13",
+        "license":  "MIT",
+        "why":  "accounts via setup script; DKIM; certificates; DNS"
+    },
+    {
+        "repo":  "osm-search/Nominatim",
+        "category":  "maps",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  9.4,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.2,
+                        3,
+                        3
+                    ],
+        "stars":  4520,
+        "pushed":  "2026-10-14",
+        "license":  "GPL-3.0",
+        "why":  "Postgres with PostGIS tuning; import takes hours; Apache or gunicorn"
+    },
+    {
+        "repo":  "qgis/QGIS",
+        "category":  "maps",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  9.25,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.9,
+                        3,
+                        2.1
+                    ],
+        "stars":  14573,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-2.0",
+        "why":  "source build with Qt; GDAL; PROJ; GRASS options"
+    },
+    {
+        "repo":  "openstreetmap/openstreetmap-website",
+        "category":  "maps",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  8.95,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        2.3,
+                        2.5,
+                        3
+                    ],
+        "stars":  2853,
+        "pushed":  "2026-10-15",
+        "license":  "GPL-2.0",
+        "why":  "Rails; Postgres with extensions; CGIMap; OAuth app"
+    },
+    {
+        "repo":  "valhalla/valhalla",
+        "category":  "maps",
+        "os":  "LM",
+        "variant":  "source",
+        "difficulty":  8.8,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        1.8,
+                        3,
+                        3
+                    ],
+        "stars":  6331,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "tile build; config generator; admin and timezone DBs"
+    },
+    {
+        "repo":  "Project-OSRM/osrm-backend",
+        "category":  "maps",
+        "os":  "LM",
+        "variant":  "source",
+        "difficulty":  8.73,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        1.8,
+                        3,
+                        2.9
+                    ],
+        "stars":  8148,
+        "pushed":  "2026-10-12",
+        "license":  "BSD-2-Clause",
+        "why":  "extract; partition; customize pipeline; Lua profiles"
+    },
+    {
+        "repo":  "pelias/docker",
+        "category":  "maps",
+        "os":  "L",
+        "variant":  "docker",
+        "difficulty":  8.12,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.2,
+                        3,
+                        3
+                    ],
+        "stars":  469,
+        "pushed":  "2026-03-25",
+        "license":  "MIT",
+        "why":  "pelias CLI; ES; importers; large downloads"
+    },
+    {
+        "repo":  "mautic/mautic",
+        "category":  "marketing",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  8.95,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.3,
+                        2.3,
+                        3
+                    ],
+        "stars":  10786,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "PHP; composer; Node; cron jobs; installer"
+    },
+    {
+        "repo":  "Chocobozzz/PeerTube",
+        "category":  "media",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  9.55,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.4,
+                        3,
+                        3
+                    ],
+        "stars":  15367,
+        "pushed":  "2026-10-16",
+        "license":  "AGPL-3.0",
+        "why":  "Node; Postgres; Redis; ffmpeg; nginx; systemd; production.yaml"
+    },
+    {
+        "repo":  "blakeblackshear/frigate",
+        "category":  "media",
+        "os":  "L",
+        "variant":  "docker",
+        "difficulty":  9.18,
+        "tier":  "T4",
+        "factors":  [
+                        2.5,
+                        3,
+                        2.4,
+                        3
+                    ],
+        "stars":  36682,
+        "pushed":  "2026-10-16",
+        "license":  "MIT",
+        "why":  "detector hardware (TensorRT or OpenVINO); config.yml cameras; shm size"
+    },
+    {
+        "repo":  "immich-app/immich",
+        "category":  "media",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.27,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        2,
+                        2.8,
+                        2.6
+                    ],
+        "stars":  116441,
+        "pushed":  "2026-10-16",
+        "license":  "AGPL-3.0",
+        "why":  "calibration: server; ML; Postgres with vector ext; Redis; hw accel overrides"
+    },
+    {
+        "repo":  "jellyfin/jellyfin",
+        "category":  "media",
+        "os":  "LWM",
+        "variant":  "package",
+        "difficulty":  7.45,
+        "tier":  "T3",
+        "factors":  [
+                        2.5,
+                        2.6,
+                        1.1,
+                        2.4
+                    ],
+        "stars":  58149,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-2.0",
+        "why":  "hardware transcoding drivers per vendor; setup wizard"
+    },
+    {
+        "repo":  "photoprism/photoprism",
+        "category":  "media",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  7.3,
+        "tier":  "T3",
+        "factors":  [
+                        2.3,
+                        2,
+                        1.7,
+                        2.4
+                    ],
+        "stars":  40311,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "MariaDB; originals path; TensorFlow models; admin password"
+    },
+    {
+        "repo":  "triton-inference-server/server",
+        "category":  "ml-platform",
+        "os":  "L",
+        "variant":  "docker",
+        "difficulty":  9.55,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        3,
+                        2.6,
+                        3
+                    ],
+        "stars":  11092,
+        "pushed":  "2026-10-16",
+        "license":  "BSD-3-Clause",
+        "why":  "NGC container matched to driver; model repository layout and config.pbtxt"
+    },
+    {
+        "repo":  "cvat-ai/cvat",
+        "category":  "ml-platform",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.43,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        2,
+                        3,
+                        2.6
+                    ],
+        "stars":  16940,
+        "pushed":  "2026-10-16",
+        "license":  "MIT",
+        "why":  "about fifteen containers; Nuclio serverless for auto-annotation; superuser"
+    },
+    {
+        "repo":  "netbirdio/netbird",
+        "category":  "network",
+        "os":  "L",
+        "variant":  "script",
+        "difficulty":  9.4,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.2,
+                        3,
+                        3
+                    ],
+        "stars":  30025,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "IdP; coturn; signal; management; relay; getting-started script"
+    },
+    {
+        "repo":  "prometheus-operator/kube-prometheus",
+        "category":  "observability",
+        "os":  "L",
+        "variant":  "k8s",
+        "difficulty":  9.25,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        2.2,
+                        3,
+                        3
+                    ],
+        "stars":  7748,
+        "pushed":  "2026-10-14",
+        "license":  "Apache-2.0",
+        "why":  "cluster; CRDs first; jsonnet build; version matrix"
+    },
+    {
+        "repo":  "zabbix/zabbix",
+        "category":  "observability",
+        "os":  "L",
+        "variant":  "package",
+        "difficulty":  8.8,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.3,
+                        2.4,
+                        2.7
+                    ],
+        "stars":  6478,
+        "pushed":  "2026-10-16",
+        "license":  "AGPL-3.0",
+        "why":  "server; frontend; agent; DB schema import; web wizard"
+    },
+    {
+        "repo":  "deviantony/docker-elk",
+        "category":  "observability",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.43,
+        "tier":  "T4",
+        "factors":  [
+                        2.5,
+                        1.7,
+                        2.7,
+                        3
+                    ],
+        "stars":  18385,
+        "pushed":  "2026-10-11",
+        "license":  "MIT",
+        "why":  "vm.max_map_count; setup container passwords; Logstash pipelines"
+    },
+    {
+        "repo":  "opensearch-project/OpenSearch",
+        "category":  "observability",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.05,
+        "tier":  "T4",
+        "factors":  [
+                        2.5,
+                        1.8,
+                        2.1,
+                        3
+                    ],
+        "stars":  13878,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "security plugin admin password; vm.max_map_count; Dashboards"
+    },
+    {
+        "repo":  "open-telemetry/opentelemetry-demo",
+        "category":  "observability",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.05,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        3,
+                        2.4
+                    ],
+        "stars":  3409,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "twenty microservices in many languages; Kafka; Grafana; Jaeger"
+    },
+    {
+        "repo":  "getsentry/self-hosted",
+        "category":  "platform",
+        "os":  "L",
+        "variant":  "script",
+        "difficulty":  9.1,
+        "tier":  "T4",
+        "factors":  [
+                        2.4,
+                        2.4,
+                        3,
+                        3
+                    ],
+        "stars":  9614,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "about 40 containers; install.sh; ClickHouse; Kafka; Snuba; first user"
+    },
+    {
+        "repo":  "PostHog/posthog",
+        "category":  "platform",
+        "os":  "L",
+        "variant":  "script",
+        "difficulty":  8.73,
+        "tier":  "T4",
+        "factors":  [
+                        2.5,
+                        1.8,
+                        3,
+                        3
+                    ],
+        "stars":  40314,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "hobby deploy script; ClickHouse; Kafka; Caddy; domain"
+    },
+    {
+        "repo":  "appwrite/appwrite",
+        "category":  "platform",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.5,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        3,
+                        3
+                    ],
+        "stars":  57708,
+        "pushed":  "2026-10-16",
+        "license":  "BSD-3-Clause",
+        "why":  "twenty-plus containers; interactive installer"
+    },
+    {
+        "repo":  "supabase/supabase",
+        "category":  "platform",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.5,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        3,
+                        3
+                    ],
+        "stars":  111662,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "JWT secrets generated; Kong; a dozen containers"
+    },
+    {
+        "repo":  "opf/openproject",
+        "category":  "pm",
+        "os":  "L",
+        "variant":  "package",
+        "difficulty":  9.48,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.3,
+                        3,
+                        3
+                    ],
+        "stars":  16449,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-3.0",
+        "why":  "packaged installer wizard; Postgres; memcached; Apache"
+    },
+    {
+        "repo":  "makeplane/plane",
+        "category":  "pm",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.5,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        3,
+                        3
+                    ],
+        "stars":  60967,
+        "pushed":  "2026-10-16",
+        "license":  "AGPL-3.0",
+        "why":  "a dozen services; setup script; env"
+    },
+    {
+        "repo":  "taigaio/taiga-docker",
+        "category":  "pm",
+        "os":  "L",
+        "variant":  "docker",
+        "difficulty":  8.12,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.2,
+                        3,
+                        3
+                    ],
+        "stars":  2159,
+        "pushed":  "2025-10-13",
+        "license":  "MPL-2.0",
+        "why":  "back; front; events; RabbitMQ x2; protected; superuser"
+    },
+    {
+        "repo":  "hcengineering/huly-selfhost",
+        "category":  "pm",
+        "os":  "L",
+        "variant":  "docker",
+        "difficulty":  8.12,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.2,
+                        3,
+                        3
+                    ],
+        "stars":  3575,
+        "pushed":  "2026-09-28",
+        "license":  "EPL-2.0",
+        "why":  "setup script; nginx; secrets; many services"
+    },
+    {
+        "repo":  "rustdesk/rustdesk",
+        "category":  "remote",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  9.78,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        3,
+                        3,
+                        2.7
+                    ],
+        "stars":  126055,
+        "pushed":  "2026-10-15",
+        "license":  "AGPL-3.0",
+        "why":  "vcpkg; Flutter; Rust; per-OS packaging"
+    },
+    {
+        "repo":  "apache/guacamole-server",
+        "category":  "remote",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  9.02,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        1.7,
+                        3,
+                        3
+                    ],
+        "stars":  4011,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "guacd build; Tomcat webapp; DB auth extension; schema"
+    },
+    {
+        "repo":  "isaac-sim/IsaacLab",
+        "category":  "robotics",
+        "os":  "LW",
+        "variant":  "pip",
+        "difficulty":  10,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        3,
+                        3,
+                        3
+                    ],
+        "stars":  8367,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "Isaac Sim pip with EULA; exact Python; RTX driver"
+    },
+    {
+        "repo":  "carla-simulator/scenario_runner",
+        "category":  "robotics",
+        "os":  "LW",
+        "variant":  "pip",
+        "difficulty":  9.93,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        3,
+                        3,
+                        2.9
+                    ],
+        "stars":  683,
+        "pushed":  "2026-10-16",
+        "license":  "MIT",
+        "why":  "needs a matching CARLA server; PYTHONPATH egg"
+    },
+    {
+        "repo":  "PX4/PX4-Autopilot",
+        "category":  "robotics",
+        "os":  "LWM",
+        "variant":  "script",
+        "difficulty":  9.78,
+        "tier":  "T4",
+        "factors":  [
+                        2.7,
+                        3,
+                        3,
+                        3
+                    ],
+        "stars":  12820,
+        "pushed":  "2026-10-16",
+        "license":  "BSD-3-Clause",
+        "why":  "toolchain script; Gazebo SITL; QGroundControl; MAVLink ports"
+    },
+    {
+        "repo":  "commaai/openpilot",
+        "category":  "robotics",
+        "os":  "LM",
+        "variant":  "script",
+        "difficulty":  9.4,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        2.6,
+                        3,
+                        3
+                    ],
+        "stars":  63915,
+        "pushed":  "2026-10-16",
+        "license":  "MIT",
+        "why":  "setup script; scons build; MetaDrive simulator bridge"
+    },
+    {
+        "repo":  "ArduPilot/ardupilot",
+        "category":  "robotics",
+        "os":  "LWM",
+        "variant":  "script",
+        "difficulty":  9.32,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        2.9,
+                        3,
+                        2.4
+                    ],
+        "stars":  16081,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-3.0",
+        "why":  "prereqs script; waf; SITL; MAVProxy"
+    },
+    {
+        "repo":  "Unity-Technologies/ml-agents",
+        "category":  "robotics",
+        "os":  "LWM",
+        "variant":  "pip",
+        "difficulty":  9.25,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        3,
+                        2.7,
+                        2.7
+                    ],
+        "stars":  19768,
+        "pushed":  "2026-10-13",
+        "license":  "NOASSERTION",
+        "why":  "Unity Editor via Hub with account; exact Python and package versions"
+    },
+    {
+        "repo":  "gazebosim/gz-sim",
+        "category":  "robotics",
+        "os":  "LM",
+        "variant":  "source",
+        "difficulty":  9.17,
+        "tier":  "T4",
+        "factors":  [
+                        2.7,
+                        3,
+                        3,
+                        2.2
+                    ],
+        "stars":  1541,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "collection of libraries in order; Ogre; per-OS deps"
+    },
+    {
+        "repo":  "Genesis-Embodied-AI/genesis-world",
+        "category":  "robotics",
+        "os":  "LWM",
+        "variant":  "pip",
+        "difficulty":  7.22,
+        "tier":  "T3",
+        "factors":  [
+                        2,
+                        3,
+                        1.7,
+                        1.6
+                    ],
+        "stars":  30068,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "pip plus torch CUDA (was Genesis-Embodied-AI/Genesis)"
+    },
+    {
+        "repo":  "allenai/ai2thor",
+        "category":  "robotics",
+        "os":  "LM",
+        "variant":  "pip",
+        "difficulty":  7.15,
+        "tier":  "T3",
+        "factors":  [
+                        1.6,
+                        2.7,
+                        2.3,
+                        1.6
+                    ],
+        "stars":  1812,
+        "pushed":  "2025-11-03",
+        "license":  "Apache-2.0",
+        "why":  "Unity build download; X server or CloudRendering"
+    },
+    {
+        "repo":  "chatwoot/chatwoot",
+        "category":  "saas",
+        "os":  "L",
+        "variant":  "script",
+        "difficulty":  9.32,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        2.3,
+                        3,
+                        3
+                    ],
+        "stars":  37876,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "Rails; Sidekiq; Postgres with pgvector; Redis"
+    },
+    {
+        "repo":  "calcom/cal.diy",
+        "category":  "saas",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  8.12,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.8,
+                        2.4,
+                        3
+                    ],
+        "stars":  49082,
+        "pushed":  "2026-09-26",
+        "license":  "MIT",
+        "why":  "many env keys; OAuth integrations; Prisma migrate (was calcom/cal.com)"
+    },
+    {
+        "repo":  "OISF/suricata",
+        "category":  "security",
+        "os":  "LW",
+        "variant":  "source",
+        "difficulty":  9.1,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.3,
+                        3,
+                        2.5
+                    ],
+        "stars":  6736,
+        "pushed":  "2026-10-08",
+        "license":  "GPL-2.0",
+        "why":  "Rust plus C build; rules update; capture privileges"
+    },
+    {
+        "repo":  "zeek/zeek",
+        "category":  "security",
+        "os":  "LM",
+        "variant":  "source",
+        "difficulty":  8.88,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        2.3,
+                        3,
+                        2.4
+                    ],
+        "stars":  8112,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "CMake build; node.cfg; zeekctl deploy"
+    },
+    {
+        "repo":  "Shuffle/Shuffle",
+        "category":  "security",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.12,
+        "tier":  "T4",
+        "factors":  [
+                        2.5,
+                        1.7,
+                        2.7,
+                        2.6
+                    ],
+        "stars":  2456,
+        "pushed":  "2026-10-12",
+        "license":  "AGPL-3.0",
+        "why":  "OpenSearch; Orborus worker; vm.max_map_count; admin"
+    },
+    {
+        "repo":  "rapid7/metasploit-framework",
+        "category":  "security",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  8.05,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        2.9,
+                        1.7,
+                        2
+                    ],
+        "stars":  39157,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "exact Ruby; bundler; Postgres msfdb init"
+    },
+    {
+        "repo":  "DefectDojo/django-DefectDojo",
+        "category":  "security",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.05,
+        "tier":  "T4",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        2.8,
+                        2.6
+                    ],
+        "stars":  5008,
+        "pushed":  "2026-10-16",
+        "license":  "BSD-3-Clause",
+        "why":  "uwsgi; nginx; celery; initializer admin password in logs"
+    },
+    {
+        "repo":  "mandiant/flare-vm",
+        "category":  "security",
+        "os":  "W",
+        "variant":  "script",
+        "difficulty":  7.68,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        1.2,
+                        2.1,
+                        2.6
+                    ],
+        "stars":  9151,
+        "pushed":  "2026-10-07",
+        "license":  "Apache-2.0",
+        "why":  "Windows VM; disable Defender and updates; Boxstarter; restarts"
+    },
+    {
+        "repo":  "apache/caldera",
+        "category":  "security",
+        "os":  "LM",
+        "variant":  "source",
+        "difficulty":  7.22,
+        "tier":  "T3",
+        "factors":  [
+                        2.1,
+                        2.3,
+                        1.9,
+                        2
+                    ],
+        "stars":  7445,
+        "pushed":  "2026-10-12",
+        "license":  "Apache-2.0",
+        "why":  "Go plus Node for the UI plugin; plugins; config (was mitre/caldera)"
+    },
+    {
+        "repo":  "SpecterOps/BloodHound",
+        "category":  "security",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  7.15,
+        "tier":  "T3",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        2.1,
+                        2.1
+                    ],
+        "stars":  3493,
+        "pushed":  "2026-10-16",
+        "license":  "Apache-2.0",
+        "why":  "Neo4j; Postgres; initial password in logs"
+    },
+    {
+        "repo":  "mastodon/mastodon",
+        "category":  "social",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  9.85,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.8,
+                        3,
+                        3
+                    ],
+        "stars":  50413,
+        "pushed":  "2026-10-16",
+        "license":  "AGPL-3.0",
+        "why":  "Ruby and Node exact; Postgres; Redis; Sidekiq; streaming; nginx; certbot"
+    },
+    {
+        "repo":  "misskey-dev/misskey",
+        "category":  "social",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  9.02,
+        "tier":  "T4",
+        "factors":  [
+                        2.4,
+                        2.3,
+                        3,
+                        3
+                    ],
+        "stars":  11342,
+        "pushed":  "2026-10-16",
+        "license":  "AGPL-3.0",
+        "why":  "Node exact; pnpm; Postgres; Redis; default.yml"
+    },
+    {
+        "repo":  "LemmyNet/lemmy",
+        "category":  "social",
+        "os":  "L",
+        "variant":  "docker",
+        "difficulty":  8.65,
+        "tier":  "T4",
+        "factors":  [
+                        2.4,
+                        1.8,
+                        3,
+                        3
+                    ],
+        "stars":  14632,
+        "pushed":  "2026-10-16",
+        "license":  "AGPL-3.0",
+        "why":  "pict-rs; postfix; nginx; lemmy.hjson"
+    },
+    {
+        "repo":  "discourse/discourse_docker",
+        "category":  "social",
+        "os":  "L",
+        "variant":  "script",
+        "difficulty":  8.27,
+        "tier":  "T4",
+        "factors":  [
+                        2.5,
+                        1.2,
+                        3,
+                        3
+                    ],
+        "stars":  1863,
+        "pushed":  "2026-10-15",
+        "license":  "MIT",
+        "why":  "launcher; app.yml; SMTP required; Let\u0027s Encrypt"
+    },
+    {
+        "repo":  "NodeBB/NodeBB",
+        "category":  "social",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  7.15,
+        "tier":  "T3",
+        "factors":  [
+                        2.3,
+                        1.7,
+                        1.7,
+                        2.5
+                    ],
+        "stars":  15240,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-3.0",
+        "why":  "Node; Redis or Mongo; setup questions"
+    },
+    {
+        "repo":  "ceph/ceph",
+        "category":  "storage",
+        "os":  "L",
+        "variant":  "cephadm",
+        "difficulty":  9.85,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.8,
+                        3,
+                        3
+                    ],
+        "stars":  17131,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "cephadm bootstrap; disks for OSDs; podman; dashboard"
+    },
+    {
+        "repo":  "nextcloud/all-in-one",
+        "category":  "storage",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  9.1,
+        "tier":  "T4",
+        "factors":  [
+                        2.5,
+                        2.3,
+                        3,
+                        3
+                    ],
+        "stars":  10596,
+        "pushed":  "2026-10-16",
+        "license":  "AGPL-3.0",
+        "why":  "mastercontainer web wizard; domain validation; optional containers"
+    },
+    {
+        "repo":  "LizardByte/Sunshine",
+        "category":  "streaming",
+        "os":  "LWM",
+        "variant":  "installer",
+        "difficulty":  8.12,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        3,
+                        1.1,
+                        2.8
+                    ],
+        "stars":  42290,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-3.0",
+        "why":  "virtual display; firewall ports; Moonlight pairing PIN in web UI"
+    },
+    {
+        "repo":  "nerfstudio-project/nerfstudio",
+        "category":  "vision-3d",
+        "os":  "LW",
+        "variant":  "pip",
+        "difficulty":  9.62,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        3,
+                        3,
+                        2.9
+                    ],
+        "stars":  12078,
+        "pushed":  "2025-07-28",
+        "license":  "Apache-2.0",
+        "why":  "tiny-cuda-nn build; COLMAP and ffmpeg; viewer port"
+    },
+    {
+        "repo":  "graphdeco-inria/gaussian-splatting",
+        "category":  "vision-3d",
+        "os":  "LW",
+        "variant":  "conda",
+        "difficulty":  9.62,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        3,
+                        3,
+                        2.9
+                    ],
+        "stars":  24226,
+        "pushed":  "2025-10-17",
+        "license":  "NOASSERTION",
+        "why":  "CUDA 11.8 toolkit; rasterizer submodule build; COLMAP; VS on Windows"
+    },
+    {
+        "repo":  "hbb1/2d-gaussian-splatting",
+        "category":  "vision-3d",
+        "os":  "LW",
+        "variant":  "conda",
+        "difficulty":  9.55,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        3,
+                        3,
+                        2.8
+                    ],
+        "stars":  3312,
+        "pushed":  "2026-08-25",
+        "license":  "NOASSERTION",
+        "why":  "surfel rasterizer build; exact CUDA"
+    },
+    {
+        "repo":  "Kitware/ParaView",
+        "category":  "vision-3d",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  9.4,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        3,
+                        3,
+                        2.2
+                    ],
+        "stars":  1711,
+        "pushed":  "2026-10-16",
+        "license":  "BSD-3-Clause",
+        "why":  "superbuild with Qt; MPI; Python"
+    },
+    {
+        "repo":  "NVlabs/instant-ngp",
+        "category":  "vision-3d",
+        "os":  "LW",
+        "variant":  "source",
+        "difficulty":  9.17,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        3,
+                        3,
+                        2.3
+                    ],
+        "stars":  17577,
+        "pushed":  "2026-02-02",
+        "license":  "NOASSERTION",
+        "why":  "CMake plus CUDA plus OptiX; GUI"
+    },
+    {
+        "repo":  "Tencent-Hunyuan/Hunyuan3D-2",
+        "category":  "vision-3d",
+        "os":  "LW",
+        "variant":  "pip",
+        "difficulty":  9.17,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        3,
+                        3,
+                        2.3
+                    ],
+        "stars":  15142,
+        "pushed":  "2025-10-28",
+        "license":  "NOASSERTION",
+        "why":  "custom rasterizer CUDA builds; texture pipeline"
+    },
+    {
+        "repo":  "WebODM/WebODM",
+        "category":  "vision-3d",
+        "os":  "LWM",
+        "variant":  "docker",
+        "difficulty":  8.8,
+        "tier":  "T4",
+        "factors":  [
+                        2.4,
+                        3,
+                        2.9,
+                        2.1
+                    ],
+        "stars":  4222,
+        "pushed":  "2026-10-15",
+        "license":  "AGPL-3.0",
+        "why":  "webapp; worker; NodeODM; db; broker; GPU variant (was OpenDroneMap/WebODM)"
+    },
+    {
+        "repo":  "OpenDroneMap/ODM",
+        "category":  "vision-3d",
+        "os":  "LW",
+        "variant":  "docker",
+        "difficulty":  8.5,
+        "tier":  "T4",
+        "factors":  [
+                        2.2,
+                        3,
+                        3,
+                        1.8
+                    ],
+        "stars":  6533,
+        "pushed":  "2026-09-16",
+        "license":  "AGPL-3.0",
+        "why":  "SuperBuild of many photogrammetry libs; GPU image"
+    },
+    {
+        "repo":  "colmap/colmap",
+        "category":  "vision-3d",
+        "os":  "LWM",
+        "variant":  "source",
+        "difficulty":  8.43,
+        "tier":  "T4",
+        "factors":  [
+                        2.1,
+                        3,
+                        3,
+                        1.8
+                    ],
+        "stars":  12970,
+        "pushed":  "2026-10-16",
+        "license":  "NOASSERTION",
+        "why":  "build with CUDA; many system libs per OS"
+    },
+    {
+        "repo":  "facebookresearch/sam2",
+        "category":  "vision-3d",
+        "os":  "LW",
+        "variant":  "pip",
+        "difficulty":  8.27,
+        "tier":  "T4",
+        "factors":  [
+                        2,
+                        3,
+                        3,
+                        1.7
+                    ],
+        "stars":  20015,
+        "pushed":  "2026-05-29",
+        "license":  "Apache-2.0",
+        "why":  "CUDA extension build; checkpoints; demo frontend and backend"
+    },
+    {
+        "repo":  "dockur/windows",
+        "category":  "vm",
+        "os":  "L",
+        "variant":  "docker",
+        "difficulty":  8.12,
+        "tier":  "T4",
+        "factors":  [
+                        2.6,
+                        1.6,
+                        2.7,
+                        2.6
+                    ],
+        "stars":  53640,
+        "pushed":  "2026-10-07",
+        "license":  "MIT",
+        "why":  "KVM device; Windows ISO download; RDP or web viewer"
+    },
+    {
+        "repo":  "quickemu-project/quickemu",
+        "category":  "vm",
+        "os":  "LM",
+        "variant":  "package",
+        "difficulty":  7.98,
+        "tier":  "T4",
+        "factors":  [
+                        2.5,
+                        2.2,
+                        2.7,
+                        1.9
+                    ],
+        "stars":  16536,
+        "pushed":  "2026-10-14",
+        "license":  "MIT",
+        "why":  "QEMU; quickget OS images; VM config file"
+    },
+    {
+        "repo":  "signalwire/freeswitch",
+        "category":  "voip",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  9.48,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        2.3,
+                        3,
+                        3
+                    ],
+        "stars":  5232,
+        "pushed":  "2026-10-09",
+        "license":  "NOASSERTION",
+        "why":  "SignalWire token for packages; spandsp and sofia builds"
+    },
+    {
+        "repo":  "asterisk/asterisk",
+        "category":  "voip",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  9.02,
+        "tier":  "T4",
+        "factors":  [
+                        3,
+                        1.7,
+                        3,
+                        3
+                    ],
+        "stars":  3623,
+        "pushed":  "2026-10-14",
+        "license":  "NOASSERTION",
+        "why":  "menuselect; pjsip.conf; extensions.conf"
+    },
+    {
+        "repo":  "meetecho/janus-gateway",
+        "category":  "voip",
+        "os":  "L",
+        "variant":  "source",
+        "difficulty":  8.88,
+        "tier":  "T4",
+        "factors":  [
+                        2.8,
+                        1.7,
+                        3,
+                        3
+                    ],
+        "stars":  9191,
+        "pushed":  "2026-10-16",
+        "license":  "GPL-3.0",
+        "why":  "libnice; libsrtp; usrsctp builds; plugin configs"
+    }
+]
