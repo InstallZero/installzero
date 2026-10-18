@@ -77,7 +77,18 @@ async function storeTranscript(resultId, text) {
 }
 // Fact regexes are written for .NET; JavaScript has no leading inline flags.
 function jsRegex(re) { try { return new RegExp(String(re).replace(/^\(\?[imsx]+\)/, ''), 'im'); } catch { return null; } }
-async function repoOfResult(r) { return (r.bench_repo && await repos().findOne({ _id: r.bench_repo })) || await repos().findOne({ bench_id: r.repo }); }
+async function repoOfResult(r) { return (r.bench_repo && await repos().findOne({ _id: r.bench_repo })) || await repos().findOne({ bench_id: r.repo }) || hostRepo(r.repo); }
+// Runs from Invoke-ProbeEval.ps1 probed a real install on the Windows host;
+// their repos and facts are in agent\eval\repos.json (mounted read-only).
+const HOST_REPOS_FILE = process.env.EVAL_HOST_REPOS_FILE || path.join(__dirname, 'host-repos.json');
+function hostRepo(id) {
+  let list = [];
+  try { list = arr(JSON.parse(fs.readFileSync(HOST_REPOS_FILE, 'utf8').replace(/^\uFEFF/, '')).repos); } catch { return null; }
+  const e = list.find(x => x && x.id === id);
+  if (!e) return null;
+  return { _id: e.id, bench_id: e.id, host: true, facts: arr(e.facts), serves: e.serves || '', recipe: null,
+    install_notes: `Not a WSL snapshot: this probe ran on the Windows host where the project was really installed (no recipe; the install was done by hand or by its installer). ${e.why || ''}` };
+}
 const guidanceText = L => (L.items || []).filter(i => i.accepted && i.kind === 'prompt').map(i => `- ${i.text}`).join('\n');
 
 const app = express();
@@ -717,8 +728,9 @@ app.post('/api/diagnose', wrap(async (req, res) => {
   const b = req.body, q = { ...(await resultQuery(b)), delivered: true, 'misses.0': { $exists: true }, has_transcript: true };
   if (!b.force) q.diagnosis = { $exists: false };
   const ids = (await results().find(q, { projection: { _id: 1 } }).limit(2000).toArray()).map(r => r._id);
-  let n = 0; for (const id of ids) if (await queueDiagnose(id, b.model)) n++;
-  res.json({ queued: n, matched: ids.length });
+  const pending = new Set(await jobs().distinct('result_id', { type: 'diagnose', status: { $in: ['queued', ...ACTIVE] }, result_id: { $in: ids } }));
+  let n = 0; for (const id of ids) if (!pending.has(id) && await queueDiagnose(id, b.model)) n++;
+  res.json({ queued: n, matched: ids.length, already_queued: pending.size, no_facts: ids.length - pending.size - n });
 }));
 
 app.get('/api/lessons', wrap(async (req, res) => res.json(await lessons().find().sort({ created_at: -1 }).toArray())));

@@ -37,6 +37,8 @@ services:
     volumes:
       # The console adds models first used in a campaign to this file.
       - ./models.json:/evals/models.json
+      # Facts for runs probed on the Windows host (Invoke-ProbeEval.ps1), for diagnosis.
+      - ../agent/eval/repos.json:/evals/host-repos.json:ro
     depends_on:
       mongo:
         condition: service_healthy

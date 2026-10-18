@@ -109,7 +109,8 @@ UI.register('losses', (() => {
       <span class="text-slate-400">${noTx.length ? `${noTx.length} runs with misses have no stored transcript: run <span class="code">agent\\eval\\worker\\Push-Transcripts.ps1</span> on the host (runs before transcripts were stored, or whose transcript two probes shared, cannot be diagnosed).` : 'Every run with misses has a transcript.'}</span>`;
     a.querySelector('#l-diag').onclick = async () => {
       const r = await UI.act(() => UI.post('/api/diagnose', { ids: diagnosable.map(x => x._id), model: a.querySelector('#l-dmodel').value }));
-      UI.toast(`Queued ${r.queued} diagnoses${r.matched > r.queued ? ` (${r.matched - r.queued} already queued)` : ''}`);
+      const skipped = [r.already_queued ? `${r.already_queued} already queued` : '', r.no_facts ? `${r.no_facts} skipped: their repo and facts were not found` : ''].filter(Boolean).join(', ');
+      UI.toast(`Queued ${r.queued} diagnoses${skipped ? ` (${skipped})` : ''}`, !!r.no_facts);
       fetchRows(true);
     };
 
