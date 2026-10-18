@@ -72,7 +72,7 @@ window.UI = (() => {
   // Model list for pickers: hosted from the server, local from online workers, and any seen in results.
   async function modelOptions() {
     const m = await get('/api/models');
-    return [...new Set([...m.hosted, ...m.local, ...m.seen])];
+    return [...new Set([...m.saved, ...m.local])];
   }
 
   return { api, get, post, put, del, toast, act, esc, badge, pct, dur, ago, shortModel, every, openDrawer, closeDrawer, register, start, modelOptions, onDrawerClose: null };

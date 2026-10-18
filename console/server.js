@@ -17,6 +17,7 @@
 const express = require('express');
 const { MongoClient } = require('mongodb');
 const crypto = require('crypto');
+const fs = require('fs');
 const path = require('path');
 
 const PORT = Number(process.env.PORT || 8300);
@@ -27,12 +28,15 @@ const WORKER_TIMEOUT_MS = 120000;
 const HOSTED_MODELS = (process.env.EVAL_HOSTED_MODELS ||
   'anthropic:claude-opus-5-5,openai:gpt-5.6-sol,xai:grok-4.7,google:gemini-3.1-pro-preview').split(',').map(s => s.trim()).filter(Boolean);
 const BASE_PORT_FROM = 8100, BASE_PORT_TO = 8290;
+// Bind-mounted from console\models.json so models added here reach the repo.
+const MODELS_FILE = process.env.EVAL_MODELS_FILE || path.join(__dirname, 'models.json');
 
 let db;
 const col = name => db.collection(name);
 const repos = () => col('bench_repos'), datasets = () => col('bench_datasets'), jobs = () => col('bench_jobs'),
   campaigns = () => col('bench_campaigns'), results = () => col('bench_results'), workers = () => col('bench_workers'),
-  snippets = () => col('bench_snippets'), transcripts = () => col('bench_transcripts'), lessons = () => col('bench_lessons');
+  snippets = () => col('bench_snippets'), transcripts = () => col('bench_transcripts'), lessons = () => col('bench_lessons'),
+  savedModels = () => col('bench_models');
 
 const now = () => new Date();
 const newId = prefix => `${prefix}-${Date.now().toString(36)}${crypto.randomBytes(3).toString('hex')}`;
@@ -255,11 +259,51 @@ app.delete('/api/dataset', wrap(async (req, res) => { await datasets().deleteOne
 
 // ---- campaigns and jobs --------------------------------------------------------
 
+// Saved models live in bench_models and MODELS_FILE: the file's entries are
+// loaded at start, new ones (from campaigns, or used before this existed) are
+// added to both. Never removes; edit the file and restart to drop one.
+async function saveModels(ids, source, campaign = null) {
+  const have = new Set((await savedModels().find({}, { projection: { _id: 1 } }).toArray()).map(m => m._id));
+  let order = await savedModels().countDocuments(), added = 0;
+  for (const id of [...new Set(ids.map(m => String(m || '').trim()).filter(Boolean))]) {
+    if (have.has(id)) continue;
+    await savedModels().insertOne({ _id: id, source, campaign, added_at: now(), order: order++ });
+    have.add(id); added++;
+  }
+  if (added) writeModelsFile();
+  return added;
+}
+
+async function writeModelsFile() {
+  const all = await savedModels().find().sort({ order: 1, _id: 1 }).toArray();
+  let doc = {};
+  try { doc = JSON.parse(fs.readFileSync(MODELS_FILE, 'utf8')); } catch { }
+  doc.models = all.map(m => ({ id: m._id, added: m.added_at.toISOString().slice(0, 10), source: m.source }));
+  const text = JSON.stringify(doc, null, 2).replace(/\{\n\s+("id": [^\n]+)\n\s+("added": [^\n]+)\n\s+("source": [^\n]+)\n\s+\}/g, '{ $1 $2 $3 }') + '\n';
+  // Written in place: a bind-mounted single file cannot be replaced by a rename.
+  try { fs.writeFileSync(MODELS_FILE, text); } catch (e) { console.error(`cannot write ${MODELS_FILE}: ${e.message}`); }
+}
+
+async function loadModels() {
+  let file = [];
+  try { file = arr(JSON.parse(fs.readFileSync(MODELS_FILE, 'utf8')).models); }
+  catch (e) { console.error(`cannot read ${MODELS_FILE}: ${e.message}`); }
+  const have = new Set((await savedModels().find({}, { projection: { _id: 1 } }).toArray()).map(m => m._id));
+  let order = have.size;
+  for (const m of file) {
+    if (!m || !m.id || have.has(m.id)) continue;
+    await savedModels().insertOne({ _id: m.id, source: m.source || 'file', campaign: null, added_at: m.added ? new Date(m.added) : now(), order: order++ });
+    have.add(m.id);
+  }
+  const used = [...await campaigns().distinct('models'), ...(await results().distinct('model')).map(m => String(m || '').replace(/ \([\w-]+\)$/, ''))];
+  if (!await saveModels(used, 'history')) await writeModelsFile();
+}
+
 app.get('/api/models', wrap(async (req, res) => {
   const ws = await workers().find({ last_seen: { $gt: new Date(Date.now() - WORKER_TIMEOUT_MS) } }).toArray();
   const local = [...new Set(ws.flatMap(w => w.local_models || []))];
-  const seen = await results().distinct('model');
-  res.json({ hosted: HOSTED_MODELS, local, seen: [...new Set(seen.filter(Boolean).map(m => m.replace(/ \([\w-]+\)$/, '')))] });
+  const saved = (await savedModels().find().sort({ order: 1, _id: 1 }).toArray()).map(m => m._id);
+  res.json({ saved, local, hosted: saved.filter(m => !isLocalModel(m)) });
 }));
 
 app.get('/api/campaigns', wrap(async (req, res) => {
@@ -291,6 +335,7 @@ app.post('/api/campaigns', wrap(async (req, res) => {
   const docs = [];
   for (const r of ok) for (const m of models) for (let i = 1; i <= runs; i++) docs.push(newJob('probe', r, { model: m, campaign: id, dataset: d._id, run: i, priority: c.priority, max_turns: c.max_turns, guidance: c.guidance }));
   if (docs.length) await jobs().insertMany(docs);
+  await saveModels(models, 'campaign', id);
   const tuned = L ? ok.filter(r => (L.source.repos || []).includes(r.bench_id)).length : 0;
   res.json({ campaign: c, jobs: docs.length, skipped, tuned_on: tuned });
 }));
@@ -762,6 +807,7 @@ async function main() {
   await results().createIndex({ model: 1, repo: 1 });
   await jobs().createIndex({ type: 1, result_id: 1 });
   await repos().createIndex({ bench_id: 1 }, { unique: true, partialFilterExpression: { bench_id: { $type: 'string' } } });
+  await loadModels();
   setInterval(reap, 30000);
   app.listen(PORT, () => console.log(`InstallZero evals on :${PORT} (db ${DB_NAME})`));
 }

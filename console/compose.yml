@@ -34,6 +34,9 @@ services:
       EVAL_GPU_LIMIT: ${EVAL_GPU_LIMIT:-1}
       EVAL_HOSTED_MODELS: ${EVAL_HOSTED_MODELS:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    volumes:
+      # The console adds models first used in a campaign to this file.
+      - ./models.json:/evals/models.json
     depends_on:
       mongo:
         condition: service_healthy

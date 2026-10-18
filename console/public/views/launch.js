@@ -34,12 +34,47 @@ UI.register('launch', (() => {
     if (params.guidance) guid.value = params.guidance;
     const benchOf = new Map(repoList.map(r => [r.id, r.bench_id]));
     const modelsEl = root.querySelector('#models');
-    const addModel = (m, checked) => {
-      if ([...modelsEl.querySelectorAll('input')].some(i => i.value === m)) return;
-      modelsEl.insertAdjacentHTML('beforeend', `<label class="flex items-center gap-2"><input type="checkbox" value="${UI.esc(m)}" ${checked ? 'checked' : ''}> <span class="truncate">${UI.esc(m)}</span></label>`);
+    const boxes = () => [...modelsEl.querySelectorAll('input[type=checkbox]')];
+    const listed = (m, except) => boxes().some(i => i !== except && i.value === m);
+    // Without a provider prefix the worker runs the name as a local model file.
+    const checkName = m => { if (!/^[\w.-]+:\S+$/.test(m) && !/\.gguf$/i.test(m)) UI.toast(`"${m}" has no provider prefix, so it would run as a local model file. Hosted models are provider:model-id, e.g. openai:${m}.`, true); };
+    // Models added here can be renamed (✎) or removed (×); the listed ones come from the server.
+    const addModel = (m, checked, custom) => {
+      if (listed(m)) return false;
+      modelsEl.insertAdjacentHTML('beforeend', `<label class="flex items-center gap-2 min-w-0"><input type="checkbox" value="${UI.esc(m)}" ${checked ? 'checked' : ''}> <span class="truncate" title="${UI.esc(m)}">${UI.esc(m)}</span>${custom
+        ? '<button type="button" class="m-edit text-slate-400 hover:text-white" title="Rename">✎</button><button type="button" class="m-del text-slate-400 hover:text-red-300" title="Remove">×</button>' : ''}</label>`);
+      return true;
     };
     models.forEach((m, i) => addModel(m, i === 0));
-    root.querySelector('#add-model').onclick = () => { const v = root.querySelector('#custom').value.trim(); if (v) { addModel(v, true); root.querySelector('#custom').value = ''; estimate(); } };
+    const custom = root.querySelector('#custom');
+    const addCustom = () => { const v = custom.value.trim(); if (!v) return; if (addModel(v, true, true)) checkName(v); else UI.toast(`${v} is already in the list`); custom.value = ''; estimate(); };
+    root.querySelector('#add-model').onclick = addCustom;
+    custom.addEventListener('keydown', e => { if (e.key === 'Enter') addCustom(); });
+    modelsEl.addEventListener('click', e => {
+      const btn = e.target.closest('.m-edit, .m-del');
+      if (!btn) return;
+      e.preventDefault();
+      const row = btn.closest('label'), box = row.querySelector('input[type=checkbox]');
+      if (btn.classList.contains('m-del')) { row.remove(); estimate(); return; }
+      const span = row.querySelector('span');
+      if (!span) return;
+      const ed = document.createElement('input');
+      ed.className = 'inp flex-1 min-w-0 py-0'; ed.value = box.value;
+      span.replaceWith(ed); ed.focus(); ed.select();
+      let done = false;
+      const finish = save => {
+        if (done) return; done = true;
+        const v = ed.value.trim();
+        if (save && v && v !== box.value) {
+          if (listed(v, box)) UI.toast(`${v} is already in the list`);
+          else { box.value = v; checkName(v); }
+        }
+        span.textContent = box.value; span.title = box.value;
+        ed.replaceWith(span); estimate();
+      };
+      ed.addEventListener('keydown', k => { if (k.key === 'Enter') { k.preventDefault(); finish(true); } else if (k.key === 'Escape') finish(false); });
+      ed.addEventListener('blur', () => finish(true));
+    });
 
     const estimate = () => {
       const d = dsList.find(x => x._id === ds.value);
