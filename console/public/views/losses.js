@@ -57,13 +57,19 @@ UI.register('losses', (() => {
     table.on('rowClick', (e, row) => ResultView.open(row.getData().rid));
     await fetchRows();
     renderSets();
+    UI.every(15000, () => fetchRows(true));
   }
 
-  async function fetchRows() {
+  // Polling (quiet) redraws only when runs were scored, diagnosed or queued for diagnosis.
+  let rowsKey = '';
+  async function fetchRows(quiet) {
     const q = new URLSearchParams();
     for (const [k, s] of [['dataset', '#l-ds'], ['campaign', '#l-cmp']]) { const v = document.querySelector(s).value; if (v) q.set(k, v); }
     if (document.getElementById('l-tuned').checked) q.set('exclude_tuned', '1');
-    rows = (await UI.get('/api/results?' + q)).filter(r => r.delivered);
+    const got = (await UI.get('/api/results?' + q)).filter(r => r.delivered);
+    const key = got.map(r => `${r._id}:${r.diagnosis ? 1 : 0}${r.diagnosing ? 1 : 0}${r.has_transcript ? 1 : 0}`).join();
+    if (quiet && key === rowsKey) return;
+    rows = got; rowsKey = key;
     const fill = (sel, vals) => { const el = document.querySelector(sel), prev = el.value; el.innerHTML = '<option value="">any</option>' + vals.map(v => `<option value="${UI.esc(v)}">${UI.esc(sel === '#l-model' ? UI.shortModel(v) : v)}</option>`).join(''); if (vals.includes(prev)) el.value = prev; };
     fill('#l-model', [...new Set(rows.map(r => r.model))].sort());
     fill('#l-prompt', [...new Set(rows.map(r => r.prompt_version || '?'))].sort());
@@ -87,7 +93,8 @@ UI.register('losses', (() => {
       }
     }
     table.replaceData(misses);
-    const withMiss = R.filter(r => (r.misses || []).length), diagnosable = withMiss.filter(r => r.has_transcript && !r.diagnosis), noTx = withMiss.filter(r => !r.has_transcript);
+    const withMiss = R.filter(r => (r.misses || []).length), diagnosable = withMiss.filter(r => r.has_transcript && !r.diagnosis && !r.diagnosing),
+      diagnosing = withMiss.filter(r => r.diagnosing && !r.diagnosis).length, noTx = withMiss.filter(r => !r.has_transcript);
     const diagnosed = withMiss.filter(r => r.diagnosis).length, weight = misses.reduce((a, m) => a + m.weight, 0);
     const bench = misses.filter(m => ResultView.BENCH.includes(m.cause)), classified = misses.filter(m => [...ResultView.PROBE, ...ResultView.BENCH].includes(m.cause));
     const kpi = (l, v, sub = '') => `<div class="card"><div class="kpi-l">${l}</div><div class="kpi">${v}</div><div class="text-xs text-slate-400">${sub}</div></div>`;
@@ -98,10 +105,12 @@ UI.register('losses', (() => {
     const a = document.getElementById('l-actions');
     a.innerHTML = `<button id="l-diag" class="btn btn-primary" ${diagnosable.length ? '' : 'disabled'}>Diagnose ${diagnosable.length} run${diagnosable.length === 1 ? '' : 's'}</button>
       <span>with</span><select id="l-dmodel" class="inp">${hosted.map(h => `<option>${UI.esc(h)}</option>`).join('')}</select>
+      ${diagnosing ? `<span class="text-slate-300">${diagnosing} diagnosing</span>` : ''}
       <span class="text-slate-400">${noTx.length ? `${noTx.length} runs with misses have no stored transcript: run <span class="code">agent\\eval\\worker\\Push-Transcripts.ps1</span> on the host (runs before transcripts were stored, or whose transcript two probes shared, cannot be diagnosed).` : 'Every run with misses has a transcript.'}</span>`;
     a.querySelector('#l-diag').onclick = async () => {
       const r = await UI.act(() => UI.post('/api/diagnose', { ids: diagnosable.map(x => x._id), model: a.querySelector('#l-dmodel').value }));
       UI.toast(`Queued ${r.queued} diagnoses${r.matched > r.queued ? ` (${r.matched - r.queued} already queued)` : ''}`);
+      fetchRows(true);
     };
 
     const cats = [...new Set(misses.map(m => m.category))].sort((x, y) => misses.filter(m => m.category === y).reduce((s, m) => s + m.weight, 0) - misses.filter(m => m.category === x).reduce((s, m) => s + m.weight, 0));

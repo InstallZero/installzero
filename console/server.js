@@ -689,6 +689,8 @@ async function resultQuery(p) {
 
 app.get('/api/results', wrap(async (req, res) => {
   const rows = await results().find(await resultQuery(req.query), { projection: { install_md_text: 0, 'probe.gaps': 0 } }).sort({ run_at: -1 }).limit(Number(req.query.limit || 5000)).toArray();
+  const pending = new Set(await jobs().distinct('result_id', { type: 'diagnose', status: { $in: ['queued', ...ACTIVE] } }));
+  for (const r of rows) if (pending.has(r._id)) r.diagnosing = true;
   res.json(rows);
 }));
 app.get('/api/result', wrap(async (req, res) => res.json(await results().findOne({ _id: req.query.id }))));
