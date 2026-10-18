@@ -7,7 +7,7 @@
     .\Import-BenchRecipes.ps1
 #>
 param(
-    [string]$Server = 'http://127.0.0.1:8300',
+    [string]$Server = 'http://127.0.0.1:81',
     [string[]]$Project = @()
 )
 

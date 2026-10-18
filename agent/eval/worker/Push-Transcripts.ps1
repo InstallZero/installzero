@@ -13,7 +13,7 @@
 .EXAMPLE
     .\Push-Transcripts.ps1
 #>
-param([string]$Server = 'http://127.0.0.1:8300')
+param([string]$Server = 'http://127.0.0.1:81')
 
 $ErrorActionPreference = 'Stop'
 $missing = @(Invoke-RestMethod "$Server/api/transcripts/missing" | ForEach-Object { $_ })

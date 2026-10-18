@@ -73,7 +73,7 @@ Nothing here runs from this repo yet. The worker and console keep running from r
 
 ### 3. Console cutover (the only downtime, a few minutes)
 
-- `console/compose.yml` runs the console and its own Mongo. Mongo is internal only, so it can't clash with rl-roboracer's port 27017. The console keeps port 8300.
+- `console/compose.yml` runs the console and its own Mongo. Mongo is internal only, so it can't clash with rl-roboracer's port 27017. The console kept port 8300 until 2026-10-17, when it moved to http://localhost:81 (the container still listens on 8300).
 - Stop the rl-roboracer `evals` container, `mongorestore` a fresh dump into the new Mongo, and start the new console.
 - Stop the worker and restart it from `installzero\agent\eval\worker`. It adopts the jobs that are running.
 - Check that the counts match: results, transcripts, diagnoses, lesson set L1, and queued jobs.

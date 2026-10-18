@@ -4,7 +4,7 @@
     and runs up to -Slots of them in parallel.
 
 .DESCRIPTION
-    Polls the console (default http://127.0.0.1:8300) the way the Unity
+    Polls the console (default http://127.0.0.1:81) the way the Unity
     client wrapper polls the dashboard. Each job runs in its own PowerShell
     process (Invoke-EvalJob.ps1); this loop tails its output to the console
     as live log and progress, posts the outcome when it exits, and kills it
@@ -26,7 +26,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Server = 'http://127.0.0.1:8300',
+    [string]$Server = 'http://127.0.0.1:81',
     [int]$Slots = 3,
     [int]$GpuSlots = 1,
     [string]$Name = $env:COMPUTERNAME.ToLower(),
