@@ -103,7 +103,7 @@ UI.register('losses', (() => {
       kpi('Weight missed / run', R.length ? (weight / R.length).toFixed(1) : '-') + kpi('Benchmark bugs', classified.length ? UI.pct(bench.length / classified.length) : '-', 'of diagnosed misses');
 
     const a = document.getElementById('l-actions');
-    a.innerHTML = `<button id="l-diag" class="btn btn-primary" ${diagnosable.length ? '' : 'disabled'}>Diagnose ${diagnosable.length} run${diagnosable.length === 1 ? '' : 's'}</button>
+    a.innerHTML = `<button id="l-diag" class="btn btn-primary" ${diagnosable.length ? '' : 'disabled'} title="Finished runs with misses that have no diagnosis yet and none queued">Diagnose ${diagnosable.length} undiagnosed run${diagnosable.length === 1 ? '' : 's'}</button>
       <span>with</span><select id="l-dmodel" class="inp">${hosted.map(h => `<option>${UI.esc(h)}</option>`).join('')}</select>
       ${diagnosing ? `<span class="text-slate-300">${diagnosing} diagnosing</span>` : ''}
       <span class="text-slate-400">${noTx.length ? `${noTx.length} runs with misses have no stored transcript: run <span class="code">agent\\eval\\worker\\Push-Transcripts.ps1</span> on the host (runs before transcripts were stored, or whose transcript two probes shared, cannot be diagnosed).` : 'Every run with misses has a transcript.'}</span>`;
