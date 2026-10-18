@@ -5,6 +5,54 @@ UI.register('analysis', (() => {
   let rows = [], runsTable;
   const PLOT = { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: '#cbd5e1', size: 11 }, margin: { l: 50, r: 10, t: 10, b: 40 } };
   const CFG = { displayModeBar: false, responsive: true };
+  const BOARD_HINTS = group => [
+    ['#', 'Rank by macro recall.'],
+    [group, `What each row compares (${group}); change it with "Compare by".`],
+    ['Recall (macro)', 'Percent of facts captured by the install document, weighted by importance (each fact is a regex matched against install.md). Averaged per repo first, then across repos, so every repo counts equally however many runs it has. Delivered runs only.'],
+    ['±95%', 'Half-width of the 95% confidence interval of the macro recall (1.96 × standard deviation of the per-repo means / √repos). Rows whose intervals overlap are not clearly different. 0 when there is only one repo.'],
+    ['Repos', 'Distinct repos with at least one delivered run.'],
+    ['Runs', 'Probe runs, including ones that did not deliver a document.'],
+    ['Delivered', 'Share of runs that wrote an install.md. Runs that ran out of turns or failed without one score nothing and are left out of recall.'],
+    ['Live checks passed', "Share of the document's detect and verify checks that passed when run against the live install (summed over delivered runs). Blank when no run reported checks."],
+    ['Median turns', 'Median number of model turns (calls) per run.'],
+    ['Mean time', 'Mean wall-clock time of the probe per run.'],
+    ['Format problems', "Mean number of install.md format problems per delivered run (steps that don't follow the required structure). Lower is better."],
+  ];
+  const SCATTER_COLORS = ['#38bdf8', '#f97316', '#a3e635', '#e879f9', '#facc15', '#f43f5e', '#2dd4bf', '#818cf8', '#e2e8f0', '#22c55e', '#b45309', '#f9a8d4'];
+
+  // Puts each scatter label where it overlaps no marker, no other label and
+  // stays inside the plot (sizes estimated from the 10px font).
+  function placeLabels(el) {
+    const L = el._fullLayout, xa = L.xaxis, ya = L.yaxis;
+    const pts = el.data.map((t, i) => ({ i, x: xa._offset + xa.l2p(t.x[0]), y: ya._offset + ya.l2p(t.y[0]), r: t.marker.size / 2 + 2, w: String(t.text[0]).length * 5.8, h: 12 }));
+    const boxes = pts.map(p => [p.x - p.r, p.y - p.r, p.x + p.r, p.y + p.r]);
+    const hit = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+    const area = [xa._offset, ya._offset - 14, xa._offset + xa._length, ya._offset + ya._length];
+    const at = (p, pos) => {
+      const [v, hz] = pos.split(' '), x0 = hz === 'center' ? p.x - p.w / 2 : hz === 'right' ? p.x + (v === 'middle' ? p.r : 0) : p.x - p.w - (v === 'middle' ? p.r : 0);
+      const y0 = v === 'top' ? p.y - p.r - p.h : v === 'bottom' ? p.y + p.r : p.y - p.h / 2;
+      return [x0, y0, x0 + p.w, y0 + p.h];
+    };
+    const POS = ['top center', 'bottom center', 'middle right', 'middle left', 'top right', 'top left', 'bottom right', 'bottom left'];
+    // Where no spot next to the marker is free, the label moves further out
+    // on a ring of offsets and points back with an arrow.
+    const RING = [40, 60, 85].flatMap(d => [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]].map(([dx, dy]) => [dx * d, dy * d * 0.6]));
+    const inside = b => b[0] >= area[0] && b[2] <= area[2] + 40 && b[1] >= area[1] && b[3] <= area[3];
+    const clear = (b, i) => inside(b) && !boxes.some((o, j) => j !== i && hit(b, o)) && !chosen.some(c => hit(b, c));
+    const chosen = [], annotations = [];
+    for (const p of [...pts].sort((a, b) => a.y - b.y)) {
+      p.pos = POS.find(pos => clear(at(p, pos), p.i));
+      if (p.pos) { chosen.push(at(p, p.pos)); continue; }
+      const off = RING.find(([ax, ay]) => clear([p.x + ax - p.w / 2, p.y + ay - p.h / 2, p.x + ax + p.w / 2, p.y + ay + p.h / 2], p.i)) || [0, -40];
+      chosen.push([p.x + off[0] - p.w / 2, p.y + off[1] - p.h / 2, p.x + off[0] + p.w / 2, p.y + off[1] + p.h / 2]);
+      const t = el.data[p.i];
+      annotations.push({ x: t.x[0], y: t.y[0], ax: off[0], ay: off[1], text: t.text[0], showarrow: true, arrowhead: 0, arrowwidth: 1,
+        arrowcolor: t.marker.color, font: { size: 10, color: t.marker.color }, standoff: p.r - 2 });
+      p.pos = 'top center'; p.hide = true;
+    }
+    Plotly.restyle(el, { textposition: pts.map(p => [p.pos]), mode: pts.map(p => p.hide ? 'markers' : 'markers+text') }, pts.map(p => p.i));
+    Plotly.relayout(el, { annotations });
+  }
 
   async function mount(root, params) {
     root.innerHTML = `
@@ -108,15 +156,26 @@ UI.register('analysis', (() => {
   function render() {
     const S = stats();
     runsTable.replaceData(rows.filter(r => included().has(groupOf(r))));
-    document.getElementById('a-board').innerHTML = S.length ? `<table class="simple"><tr><th>#</th><th>${UI.esc(document.getElementById('a-group').selectedOptions[0].text)}</th><th>Recall (macro)</th><th>±95%</th><th>Repos</th><th>Runs</th><th>Delivered</th><th>Live checks passed</th><th>Median turns</th><th>Mean time</th><th>Format problems</th></tr>` +
+    const groupName = document.getElementById('a-group').selectedOptions[0].text;
+    const head = BOARD_HINTS(groupName).map(([n, h]) => `<th title="${UI.esc(h)}" style="cursor:help;text-decoration:underline dotted;text-underline-offset:3px">${UI.esc(n)}</th>`).join('');
+    document.getElementById('a-board').innerHTML = S.length ? `<table class="simple"><tr>${head}</tr>` +
       S.map((G, i) => `<tr><td>${i + 1}</td><td><b>${UI.esc(G.name)}</b></td><td><div class="flex items-center gap-2"><div class="bar w-28"><div style="width:${Math.round((G.macro || 0) * 100)}%"></div></div><b>${UI.pct(G.macro)}</b></div></td>
         <td>${UI.pct(G.ci)}</td><td>${G.repos}</td><td>${G.runs.length}</td><td>${UI.pct(G.deliveredRate)}</td><td>${UI.pct(G.checkRate)}</td><td>${G.turns ?? ''}</td><td>${UI.dur(G.seconds)}</td><td>${G.formatProblems != null ? G.formatProblems.toFixed(1) : ''}</td></tr>`).join('') + '</table>'
       : '<div class="text-slate-400 text-sm">No scored runs match these filters.</div>';
 
     Plotly.react('a-bar', [{ type: 'bar', x: S.map(G => G.name), y: S.map(G => G.macro), error_y: { type: 'data', array: S.map(G => G.ci), visible: true, color: '#94a3b8' }, marker: { color: '#0ea5e9' }, hovertemplate: '%{x}<br>%{y:.0%}<extra></extra>' }],
       { ...PLOT, yaxis: { range: [0, 1], tickformat: '.0%', gridcolor: '#1e293b' }, xaxis: { automargin: true } }, CFG);
-    Plotly.react('a-scatter', [{ type: 'scatter', mode: 'markers+text', x: S.map(G => (G.seconds || 0) / 60), y: S.map(G => G.macro), text: S.map(G => G.name), textposition: 'top center', marker: { size: S.map(G => 8 + Math.sqrt(G.runs.length) * 3), color: '#38bdf8' }, hovertemplate: '%{text}<br>%{x:.1f} min, %{y:.0%}<extra></extra>' }],
-      { ...PLOT, xaxis: { title: 'mean minutes per run', gridcolor: '#1e293b' }, yaxis: { range: [0, 1.05], tickformat: '.0%', gridcolor: '#1e293b' } }, CFG);
+    // One trace per group so each gets its own color and legend entry; the
+    // point label is a short name (provider and quantization dropped).
+    const label = n => String(n).replace(/^[a-z]+:/, '').replace(/(-Q\d\w*|-MXFP4)?\.gguf.*$/i, '');
+    Plotly.react('a-scatter', S.map((G, i) => ({ type: 'scatter', mode: 'markers+text', name: G.name, x: [(G.seconds || 0) / 60], y: [G.macro],
+      text: [label(G.name)], textposition: 'top center', textfont: { size: 10, color: SCATTER_COLORS[i % SCATTER_COLORS.length] }, cliponaxis: false,
+      marker: { size: 6 + Math.sqrt(G.runs.length) * 1.2, color: SCATTER_COLORS[i % SCATTER_COLORS.length], line: { width: 1, color: '#0f172a' } },
+      customdata: [G.runs.length], hovertemplate: `${UI.esc(G.name)}<br>%{x:.1f} min, %{y:.0%} (%{customdata} runs)<extra></extra>` })),
+      { ...PLOT, margin: { l: 50, r: 10, t: 20, b: 40 }, showlegend: true, legend: { x: 1.02, y: 1, font: { size: 10 }, itemsizing: 'constant' },
+        xaxis: { title: 'mean minutes per run', gridcolor: '#1e293b' },
+        yaxis: { range: [0, 1.2], tickvals: [0, 0.2, 0.4, 0.6, 0.8, 1], tickformat: '.0%', gridcolor: '#1e293b' } }, CFG)
+      .then(placeLabels);
 
     const repos = [...new Set(S.flatMap(G => [...G.repoMeans.keys()]))].sort();
     Plotly.react('a-heat', [{ type: 'heatmap', x: S.map(G => G.name), y: repos, z: repos.map(r => S.map(G => G.repoMeans.has(r) ? G.repoMeans.get(r) : null)), zmin: 0, zmax: 1, colorscale: [[0, '#7f1d1d'], [0.5, '#a16207'], [1, '#15803d']],
