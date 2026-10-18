@@ -27,7 +27,9 @@ const GPU_LIMIT = Number(process.env.EVAL_GPU_LIMIT || 1);
 const WORKER_TIMEOUT_MS = 120000;
 const HOSTED_MODELS = (process.env.EVAL_HOSTED_MODELS ||
   'anthropic:claude-opus-5-5,openai:gpt-5.6-sol,xai:grok-4.7,google:gemini-3.1-pro-preview').split(',').map(s => s.trim()).filter(Boolean);
-const BASE_PORT_FROM = 8100, BASE_PORT_TO = 8290;
+const BASE_PORT_FROM = 8100, BASE_PORT_TO = 9990;
+// Blocks holding a port many projects use by default are never handed out.
+const COMMON_PORTS = [8080, 8443, 8888, 9000, 9090, 9200, 9300];
 // Bind-mounted from console\models.json so models added here reach the repo.
 const MODELS_FILE = process.env.EVAL_MODELS_FILE || path.join(__dirname, 'models.json');
 
@@ -524,7 +526,8 @@ async function jobSpec(j) {
   if (r.recipe && r.recipe.include && r.recipe.include.length) spec.snippets = await snippets().find({ _id: { $in: r.recipe.include } }).toArray();
   if (j.type === 'draft') {
     spec.github = r.github || null; spec.category = r.category || ''; spec.feedback = j.feedback || '';
-    spec.base_port = await freeBasePort(r._id);
+    spec.base_port = (r.draft && r.draft.base_port) || await freeBasePort(r._id);
+    await repos().updateOne({ _id: r._id }, { $set: { 'draft.base_port': spec.base_port } });
     spec.previous = r.recipe ? { recipe: r.recipe, facts: r.facts } : (r.draft && r.draft.recipe ? { recipe: r.draft.recipe, facts: r.draft.facts } : null);
     spec.build_error = r.snapshot && r.snapshot.status === 'failed' ? { error: r.snapshot.error, log_tail: r.snapshot.log_tail } : null;
   }
@@ -588,7 +591,12 @@ async function queueDiagnose(resultId, model) {
 async function freeBasePort(exceptId) {
   const all = await repos().find({ _id: { $ne: exceptId } }, { projection: { snapshot: 1, recipe: 1, draft: 1 } }).toArray();
   const used = new Set();
-  for (const r of all) for (const p of [...toPorts(r.snapshot && r.snapshot.ports), ...toPorts(r.recipe && r.recipe.ports_expected), ...toPorts(r.draft && r.draft.recipe && r.draft.recipe.ports_expected)]) used.add(p);
+  for (const r of all) {
+    for (const p of [...toPorts(r.snapshot && r.snapshot.ports), ...toPorts(r.recipe && r.recipe.ports_expected), ...toPorts(r.draft && r.draft.recipe && r.draft.recipe.ports_expected)]) used.add(p);
+    // Reserved when a draft starts, so drafts running together get different blocks.
+    if (r.draft && r.draft.base_port) for (let p = r.draft.base_port; p < r.draft.base_port + 10; p++) used.add(p);
+  }
+  COMMON_PORTS.forEach(p => used.add(p));
   for (let b = BASE_PORT_FROM; b <= BASE_PORT_TO; b += 10) { let free = true; for (let p = b; p < b + 10; p++) if (used.has(p)) { free = false; break; } if (free) return b; }
   return BASE_PORT_TO;
 }
@@ -657,6 +665,8 @@ app.post('/api/worker/complete', wrap(async (req, res) => {
   }
   if (j.type === 'draft') {
     const d = status === 'done' && b.draft ? { status: 'ready', ...b.draft, model: j.model, job: j._id, drafted_at: now() } : { status: 'failed', error: b.error || status, job: j._id };
+    const cur = await repos().findOne({ _id: j.repo }, { projection: { 'draft.base_port': 1 } });
+    if (cur && cur.draft && cur.draft.base_port) d.base_port = cur.draft.base_port;
     await repos().updateOne({ _id: j.repo }, { $set: { draft: d, updated_at: now() } });
     if (status === 'done' && b.draft && b.draft.rubric) await repos().updateOne({ _id: j.repo, rubric: { $exists: false } }, { $set: { rubric: b.draft.rubric } });
   }

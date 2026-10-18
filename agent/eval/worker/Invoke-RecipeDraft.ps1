@@ -23,7 +23,7 @@ $evalDir = Split-Path $PSScriptRoot
 . (Join-Path $evalDir '..\..\doctor\Llm.ps1')
 $utf8 = [Text.UTF8Encoding]::new($false)
 $repo = $spec.repo
-$branch = if ($spec.github -and $spec.github.default_branch) { $spec.github.default_branch } else { 'main' }
+$branch = if ($spec.github -and $spec.github.default_branch) { $spec.github.default_branch } else { $null }
 $basePort = [int]$spec.base_port
 
 function Get-GitHub([string]$Url, [string]$Accept = 'application/vnd.github+json') {
@@ -35,6 +35,10 @@ function Get-GitHub([string]$Url, [string]$Accept = 'application/vnd.github+json
 function Limit([string]$T, [int]$N) { if ($T.Length -le $N) { $T } else { $T.Substring(0, $N) + "`n[... truncated]" } }
 
 Write-Host "Reading $repo docs from GitHub"
+if (-not $branch) {
+    try { $branch = (Get-GitHub "https://api.github.com/repos/$repo" | ConvertFrom-Json).default_branch } catch { }
+    if (-not $branch) { $branch = 'main' }
+}
 $docs = [ordered]@{}
 try { $docs['README'] = Limit (Get-GitHub "https://api.github.com/repos/$repo/readme" 'application/vnd.github.raw') 20000 } catch { Write-Host "  no README: $($_.Exception.Message)" }
 try {
