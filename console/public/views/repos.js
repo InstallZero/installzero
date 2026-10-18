@@ -22,7 +22,7 @@ UI.register('repos', (() => {
     table = new Tabulator('#repos', {
       layout: 'fitColumns', height: '68vh', index: 'id', selectableRows: true, placeholder: 'No repos.',
       columns: [
-        { formatter: 'rowSelection', titleFormatter: 'rowSelection', width: 36, hozAlign: 'center', headerSort: false },
+        { formatter: 'rowSelection', titleFormatter: 'rowSelection', titleFormatterParams: { rowRange: 'active' }, width: 36, hozAlign: 'center', headerSort: false },
         { title: 'Repo', field: 'id', minWidth: 220, headerFilter: 'input' },
         { title: 'Bench id', field: 'bench_id', width: 110, headerFilter: 'input' },
         { title: 'Category', field: 'category', width: 120, headerFilter: 'input' },
@@ -37,7 +37,7 @@ UI.register('repos', (() => {
       ],
     });
     table.on('rowClick', (e, row) => { if (!e.target.closest('.tabulator-cell[tabulator-field=""]') && !e.target.closest('input')) openRepo(row.getData().id); });
-    table.on('rowSelectionChanged', d => { root.querySelector('#sel-count').textContent = d.length ? `${d.length} selected` : ''; });
+    table.on('rowSelectionChanged', d => { root.querySelector('#sel-count').textContent = d.length ? `${d.length} selected` : ''; setTimeout(syncSelectAll); });
     root.querySelector('#f-stage').onchange = applyFilters;
     root.querySelector('#f-status').onchange = applyFilters;
 
@@ -62,8 +62,31 @@ UI.register('repos', (() => {
   function applyFilters() {
     const stage = document.getElementById('f-stage').value, status = document.getElementById('f-status').value;
     table.setFilter(d => (!stage || d.stage === stage) && (!status || d.status === status));
+    // Bulk actions act on the selection, so it never includes rows the filters hide.
+    const shown = new Set(table.getData('active').map(d => d.id));
+    table.getSelectedRows().filter(row => !shown.has(row.getData().id)).forEach(row => row.deselect());
+    setTimeout(syncSelectAll);
   }
-  async function load() { try { await table.replaceData(await UI.get('/api/repos')); applyFilters(); } catch (e) { } }
+  // Tabulator compares the selection with every row, so with a filter on, a
+  // full "select all" showed as partial; compare with the rows shown instead.
+  function syncSelectAll() {
+    const cb = document.querySelector('#repos .tabulator-col input[type=checkbox]');
+    if (!cb) return;
+    const shown = table.getData('active').length, sel = table.getSelectedData().length;
+    cb.checked = shown > 0 && sel >= shown;
+    cb.indeterminate = sel > 0 && sel < shown;
+  }
+  // Rows are updated in place (replaceData would clear the selection and scroll
+  // on every 10 s refresh): changed repos update, new ones are added, deleted ones go.
+  async function load() {
+    try {
+      const list = await UI.get('/api/repos'), ids = new Set(list.map(r => r.id));
+      const gone = table.getRows().filter(row => !ids.has(row.getData().id));
+      await table.updateOrAddData(list);
+      gone.forEach(row => row.delete());
+      applyFilters();
+    } catch (e) { }
+  }
   async function loadDatasets(root) {
     const ds = await UI.get('/api/datasets');
     root.querySelector('#ds').innerHTML = '<option value="__new">+ new dataset…</option>' + ds.filter(d => !d.frozen).map(d => `<option value="${UI.esc(d._id)}">${UI.esc(d.name)} (${d.repos.length})</option>`).join('');
