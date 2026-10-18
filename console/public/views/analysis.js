@@ -186,7 +186,11 @@ UI.register('analysis', (() => {
     const cats = [...new Set(S.flatMap(G => Object.keys(G.catMiss)))];
     const catHeight = 80 + 40 + 32 * Math.max(3, S.length);
     document.getElementById('a-cat').style.height = catHeight + 'px';
-    Plotly.react('a-cat', cats.map(c => ({ type: 'bar', orientation: 'h', name: c, y: S.map(G => G.name), x: S.map(G => G.catMiss[c] || 0), hovertemplate: `%{y}<br>${c}: %{x:.2f}<extra></extra>` })),
+    // A card-colored outline gives every segment the same edge whatever its fill
+    // (anti-aliased edges of light fills otherwise look taller) and makes Plotly
+    // snap the bars to whole pixels.
+    Plotly.react('a-cat', cats.map(c => ({ type: 'bar', orientation: 'h', name: c, y: S.map(G => G.name), x: S.map(G => G.catMiss[c] || 0),
+      marker: { line: { width: 1, color: '#0f172a' } }, hovertemplate: `%{y}<br>${c}: %{x:.2f}<extra></extra>` })),
       { ...PLOT, height: catHeight, barmode: 'stack', bargap: 0.25, margin: { l: 10, r: 10, t: 80, b: 40, pad: 0 },
         colorway: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf', '#fde047', '#f0abfc'],
         xaxis: { title: 'weight missed per run', gridcolor: '#1e293b' }, yaxis: { automargin: true, autorange: 'reversed' },
