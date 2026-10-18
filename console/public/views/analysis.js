@@ -184,10 +184,10 @@ UI.register('analysis', (() => {
     document.getElementById('a-heat').style.height = Math.max(260, 26 * repos.length + 90) + 'px';
 
     const cats = [...new Set(S.flatMap(G => Object.keys(G.catMiss)))];
-    const catHeight = Math.max(240, 28 * S.length + 150);
+    const catHeight = 80 + 40 + 32 * Math.max(3, S.length);
     document.getElementById('a-cat').style.height = catHeight + 'px';
     Plotly.react('a-cat', cats.map(c => ({ type: 'bar', orientation: 'h', name: c, y: S.map(G => G.name), x: S.map(G => G.catMiss[c] || 0), hovertemplate: `%{y}<br>${c}: %{x:.2f}<extra></extra>` })),
-      { ...PLOT, height: catHeight, barmode: 'stack', margin: { l: 10, r: 10, t: 60, b: 40 },
+      { ...PLOT, height: catHeight, barmode: 'stack', bargap: 0.25, margin: { l: 10, r: 10, t: 80, b: 40, pad: 0 },
         colorway: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf', '#fde047', '#f0abfc'],
         xaxis: { title: 'weight missed per run', gridcolor: '#1e293b' }, yaxis: { automargin: true, autorange: 'reversed' },
         legend: { orientation: 'h', x: 0, y: 1, yanchor: 'bottom', traceorder: 'normal' } }, CFG);

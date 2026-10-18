@@ -52,3 +52,5 @@ textarea.code, .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consola
 table.simple { width: 100%; font-size: 0.8rem; }
 table.simple th { text-align: left; color: rgb(148 163 184); font-weight: 500; padding: 0.3rem 0.5rem; border-bottom: 1px solid rgb(30 41 59); }
 table.simple td { padding: 0.3rem 0.5rem; border-bottom: 1px solid rgb(30 41 59 / .5); }
+/* Stacked bars: no anti-aliased edges, so every segment of a bar looks the same height. */
+#a-cat .bars path { shape-rendering: crispEdges; }
