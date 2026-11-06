@@ -25,7 +25,7 @@ jobs:
           mkdir -p "dist/$name"
           cp -r doctor prompts catalog schemas LICENSE NOTICE "dist/$name/"
           rm -rf "dist/$name/doctor/eval" "dist/$name/schemas/validate.py"
-          rm -f "dist/$name"/doctor/*.go "dist/$name"/prompts/*.go
+          find "dist/$name" -name '*.go' -delete
           printf '%s\n%s\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" > "dist/$name/VERSION"
           # Same tag, same bytes: fixed timestamps, sorted entries, no extra attributes.
           stamp="$(git log -1 --format=%ct)"
