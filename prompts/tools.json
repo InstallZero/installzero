@@ -1,0 +1,627 @@
+{
+  "tools": {
+    "doctor/system_facts": {
+      "type": "function",
+      "function": {
+        "name": "system_facts",
+        "description": "Snapshot of this PC: Windows, RAM, GPU/driver, disk, Docker Desktop (which sessions run it), docker info, WSL distros, Windows excluded port ranges, Unity clients and supervisor scripts running.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    },
+    "doctor/gpu_drivers": {
+      "type": "function",
+      "function": {
+        "name": "gpu_drivers",
+        "description": "Every display adapter with its driver version and date, each NVIDIA GPU (index, UUID, memory use, bus), the driver minimum this stack needs, the latest Game Ready and Studio drivers nvidia.com lists for each NVIDIA model, which compose services reserve GPUs (count or device_ids), and for each running GPU service which GPU it sees inside its container and whether its framework (TensorFlow, CuPy) can use it. Sends only the GPU model name to nvidia.com.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    },
+    "doctor/compose_ps": {
+      "type": "function",
+      "function": {
+        "name": "compose_ps",
+        "description": "All containers of the docker compose project, including stopped ones, with state and ports. Also lists the services defined in the compose files.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    },
+    "doctor/service_logs": {
+      "type": "function",
+      "function": {
+        "name": "service_logs",
+        "description": "Recent log lines of one compose service (e.g. sim-controller, ros-server, mongo, dashboard, fly-brain).",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "service": {
+              "type": "string"
+            },
+            "lines": {
+              "type": "integer",
+              "description": "default 150"
+            },
+            "filter": {
+              "type": "string",
+              "description": "optional regex; only matching lines are returned"
+            }
+          },
+          "required": [
+            "service"
+          ]
+        }
+      }
+    },
+    "doctor/read_file": {
+      "type": "function",
+      "function": {
+        "name": "read_file",
+        "description": "Read a text file. Relative paths are relative to the repo. .env is shown with secret values masked; other files holding secrets (keys, credentials) cannot be read.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "start_line": {
+              "type": "integer",
+              "description": "default 1"
+            },
+            "max_lines": {
+              "type": "integer",
+              "description": "default 200, max 400"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      }
+    },
+    "doctor/list_dir": {
+      "type": "function",
+      "function": {
+        "name": "list_dir",
+        "description": "List a directory (names, sizes, modified times). Relative paths are relative to the repo.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      }
+    },
+    "doctor/grep": {
+      "type": "function",
+      "function": {
+        "name": "grep",
+        "description": "Search files under a path for a regex. Returns path:line: text.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "pattern": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string",
+              "description": "file or directory, default the repo"
+            },
+            "include": {
+              "type": "string",
+              "description": "file name filter, e.g. *.yml"
+            }
+          },
+          "required": [
+            "pattern"
+          ]
+        }
+      }
+    },
+    "doctor/run_command": {
+      "type": "function",
+      "function": {
+        "name": "run_command",
+        "description": "Run a read-only PowerShell command in the repo folder and return its output. Commands that could change anything are refused: use Get-*/Test-* cmdlets, docker ps/logs/inspect/images, docker compose ps/logs/config, git status/log/diff, netsh ... show, wsl -l -v, nvidia-smi, powercfg /getactivescheme, /list or /query, Invoke-RestMethod to localhost, and similar.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "timeout_seconds": {
+              "type": "integer",
+              "description": "default 60, max 180"
+            }
+          },
+          "required": [
+            "command"
+          ]
+        }
+      }
+    },
+    "doctor/finish": {
+      "type": "function",
+      "function": {
+        "name": "finish",
+        "description": "Report the diagnosis. Call once you have evidence for the root cause.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "root_cause": {
+              "type": "string",
+              "description": "The underlying condition, stated precisely (what is wrong, not the symptom)."
+            },
+            "evidence": {
+              "type": "string",
+              "description": "What you observed that shows it."
+            },
+            "fix": {
+              "type": "string",
+              "description": "Exact steps or commands for the user to fix it."
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "low"
+              ]
+            }
+          },
+          "required": [
+            "root_cause",
+            "evidence",
+            "fix",
+            "confidence"
+          ]
+        }
+      }
+    },
+    "doctor/finish_optimize": {
+      "type": "function",
+      "function": {
+        "name": "finish",
+        "description": "Report the review. Call once every item is checked or known to be uncheckable.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "root_cause": {
+              "type": "string",
+              "description": "One line per item: \"<item>: OK\", \"<item>: CHANGE - <what and why>\" or \"<item>: UNKNOWN - <why>\"."
+            },
+            "evidence": {
+              "type": "string",
+              "description": "The values you observed for each item."
+            },
+            "fix": {
+              "type": "string",
+              "description": "Numbered recommended changes. Each: exact steps (settings to open, lines to put in .wslconfig, commands to run), then a line \"Improves: <what gets better for training>\". Empty if nothing needs to change."
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "low"
+              ]
+            }
+          },
+          "required": [
+            "root_cause",
+            "evidence",
+            "fix",
+            "confidence"
+          ]
+        }
+      }
+    },
+    "doctor/apply_change": {
+      "type": "function",
+      "function": {
+        "name": "apply_change",
+        "description": "Apply one settings change the review found needed. Checks again that it is needed, asks the user to confirm at the console, applies it and reports the value measured afterwards.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "item": {
+              "type": "string",
+              "enum": "{{items}}",
+              "description": "The item to change."
+            }
+          },
+          "required": [
+            "item"
+          ]
+        }
+      }
+    },
+    "linux/run_command": {
+      "type": "function",
+      "function": {
+        "name": "run_command",
+        "description": "Run a read-only bash command on this Linux machine (as root) and return its exit code and output. Commands that could change anything are refused: use cat, ls, find, grep, ps, ss, systemctl status/list-*, journalctl, docker ps/inspect/logs/images, docker compose ls/ps/config, dpkg -l/-s/-L, apt policy/list, apt-mark showmanual, pip list, git status/log/remote, curl to localhost, and similar.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "timeout_seconds": {
+              "type": "integer",
+              "description": "default 60, max 180"
+            }
+          },
+          "required": [
+            "command"
+          ]
+        }
+      }
+    },
+    "linux/read_file": {
+      "type": "function",
+      "function": {
+        "name": "read_file",
+        "description": "Read a text file on this Linux machine, with line numbers. Values of password, secret, token and key settings are masked.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "start_line": {
+              "type": "integer",
+              "description": "default 1"
+            },
+            "max_lines": {
+              "type": "integer",
+              "description": "default 200, max 400"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      }
+    },
+    "linux/list_dir": {
+      "type": "function",
+      "function": {
+        "name": "list_dir",
+        "description": "List a directory on this Linux machine (ls -la).",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      }
+    },
+    "linux/grep": {
+      "type": "function",
+      "function": {
+        "name": "grep",
+        "description": "Search files under a path for an extended regex. Returns path:line: text.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "pattern": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string",
+              "description": "file or directory, default the target"
+            },
+            "include": {
+              "type": "string",
+              "description": "file name filter, e.g. *.yml"
+            }
+          },
+          "required": [
+            "pattern"
+          ]
+        }
+      }
+    },
+    "linux/inventory": {
+      "type": "function",
+      "function": {
+        "name": "inventory",
+        "description": "Read-only inventory of one area of this Linux machine. software: packages installed by hand (apt-mark showmanual with versions), apt sources and keyrings, snaps, /opt and /usr/local. containers: containers with compose project, working dir and files, images, volumes, networks. processes: all processes with command lines. ports: listening TCP and UDP ports with the owning program. services: running and enabled systemd services, timers, cron. system: OS, kernel, hostname, /etc/hosts, addresses, users and groups, sysctl settings, mounts, disk and memory. files: folders created or changed since the OS was installed, under /etc, /opt, /srv, /data, /usr/local, /var/lib, /home and /root. python: interpreters, venvs under path with their packages. node: node, npm and global packages. git: repos under path with remote, branch, commit. gpu: nvidia-smi, nvcc, CUDA. env: environment of a login shell, /etc/environment and /etc/profile.d (secrets masked).",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "area": {
+              "type": "string",
+              "enum": [
+                "software",
+                "containers",
+                "processes",
+                "ports",
+                "services",
+                "system",
+                "files",
+                "python",
+                "node",
+                "git",
+                "gpu",
+                "env"
+              ]
+            },
+            "filter": {
+              "type": "string",
+              "description": "optional regex to narrow the lines"
+            },
+            "path": {
+              "type": "string",
+              "description": "folder for python and git (default /)"
+            }
+          },
+          "required": [
+            "area"
+          ]
+        }
+      }
+    },
+    "windows/inventory": {
+      "type": "function",
+      "function": {
+        "name": "inventory",
+        "description": "Read-only inventory of one area of this machine. software: installed programs. containers: containers with compose project, working dir, compose files and images. processes: this session's processes with command lines. ports: listening TCP ports with the owning program. python: interpreters, conda envs, venvs under path with their packages. node: node, npm and global packages. git: repos under path with remote, branch, commit. gpu: nvidia-smi, nvcc, CUDA_PATH. wsl: distros. env: environment variables (secrets masked) and PATH. startup: startup folder, Run key, scheduled tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "area": {
+              "type": "string",
+              "enum": [
+                "software",
+                "containers",
+                "processes",
+                "ports",
+                "python",
+                "node",
+                "git",
+                "gpu",
+                "wsl",
+                "env",
+                "startup"
+              ]
+            },
+            "filter": {
+              "type": "string",
+              "description": "optional regex to narrow the rows"
+            },
+            "path": {
+              "type": "string",
+              "description": "folder for python and git (default the target)"
+            }
+          },
+          "required": [
+            "area"
+          ]
+        }
+      }
+    },
+    "probe/test_check": {
+      "type": "function",
+      "function": {
+        "name": "test_check",
+        "description": "Run a candidate detect or verify check here, where the project is installed, and return its exit code and output. Only read-only commands and version queries run.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code"
+          ]
+        }
+      }
+    },
+    "probe/write_install_md": {
+      "type": "function",
+      "function": {
+        "name": "write_install_md",
+        "description": "Save the full install.md (replacing the previous draft). Returns format problems and the result of running every step's detect and verify check here.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      }
+    },
+    "probe/finish": {
+      "type": "function",
+      "function": {
+        "name": "finish",
+        "description": "End the probe after the last write_install_md.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "summary": {
+              "type": "string",
+              "description": "What the project is and how the install.md installs it."
+            },
+            "gaps": {
+              "type": "string",
+              "description": "What could not be determined from this machine (versions guessed, manual steps, secrets the user must provide)."
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "low"
+              ]
+            }
+          },
+          "required": [
+            "summary",
+            "gaps",
+            "confidence"
+          ]
+        }
+      }
+    },
+    "agent/run_change": {
+      "type": "function",
+      "function": {
+        "name": "run_change",
+        "description": "Run a PowerShell (or bash) command that changes something: installs, clones, builds, starts services, writes files. It is classified first: install-folder changes run, machine-wide ones need the user's Y, destructive ones are refused. Returns the exit code and output.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "shell": {
+              "type": "string",
+              "enum": [
+                "powershell",
+                "bash"
+              ],
+              "description": "default powershell"
+            },
+            "timeout_minutes": {
+              "type": "integer",
+              "description": "default 20, max {{command_timeout_minutes}}"
+            }
+          },
+          "required": [
+            "command"
+          ]
+        }
+      }
+    },
+    "agent/finish": {
+      "type": "function",
+      "function": {
+        "name": "finish",
+        "description": "End the install: call when every step is done, or when you are blocked and need the user.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "installed",
+                "partial",
+                "failed"
+              ]
+            },
+            "summary": {
+              "type": "string",
+              "description": "What was installed and how to use it (URLs, commands to start it)."
+            },
+            "blocked_on": {
+              "type": "string",
+              "description": "What the user must do, when not fully installed."
+            }
+          },
+          "required": [
+            "status",
+            "summary"
+          ]
+        }
+      }
+    },
+    "agent/run_step": {
+      "type": "function",
+      "function": {
+        "name": "run_step",
+        "description": "Run the detect, install or verify block of a step from install.md, as chosen for this machine. Returns the exit code and output.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "step": {
+              "type": "string",
+              "enum": "{{step_ids}}"
+            },
+            "block": {
+              "type": "string",
+              "enum": [
+                "detect",
+                "install",
+                "verify"
+              ]
+            }
+          },
+          "required": [
+            "step",
+            "block"
+          ]
+        }
+      }
+    },
+    "agent/step_result": {
+      "type": "function",
+      "function": {
+        "name": "step_result",
+        "description": "Record the outcome of a step once its verify passed, it was already done, or it cannot be done.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "step": {
+              "type": "string",
+              "enum": "{{step_ids}}"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "done",
+                "already-done",
+                "skipped",
+                "failed"
+              ]
+            },
+            "evidence": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "step",
+            "status",
+            "evidence"
+          ]
+        }
+      }
+    }
+  },
+  "parameters": {
+    "purpose": {
+      "type": "string",
+      "description": "Always set: one short sentence for the user saying what this call does and why."
+    },
+    "purpose_doctor": {
+      "type": "string",
+      "description": "Always set: one short sentence for the user saying what this call checks and why."
+    }
+  }
+}

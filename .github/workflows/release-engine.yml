@@ -1,4 +1,4 @@
-# Publishes the engine (doctor, catalog, schemas) that projects' installers
+# Publishes the engine (doctor, prompts, catalog, schemas) that projects' installers
 # download: https://storage.googleapis.com/installzero/engine/installzero-engine-<tag>.zip
 # and its .sha256. Push a tag such as v0.1.0 to release. A published version is
 # never replaced: the service account may create objects but not overwrite them.
@@ -23,8 +23,9 @@ jobs:
           set -euo pipefail
           name="installzero-engine-${GITHUB_REF_NAME}"
           mkdir -p "dist/$name"
-          cp -r doctor catalog schemas LICENSE NOTICE "dist/$name/"
-          rm -rf "dist/$name/doctor/eval"
+          cp -r doctor prompts catalog schemas LICENSE NOTICE "dist/$name/"
+          rm -rf "dist/$name/doctor/eval" "dist/$name/schemas/validate.py"
+          rm -f "dist/$name"/doctor/*.go "dist/$name"/prompts/*.go
           printf '%s\n%s\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" > "dist/$name/VERSION"
           # Same tag, same bytes: fixed timestamps, sorted entries, no extra attributes.
           stamp="$(git log -1 --format=%ct)"

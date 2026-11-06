@@ -3,3 +3,5 @@ node_modules/
 doctor/assets/
 *.log
 dist/
+
+__pycache__/

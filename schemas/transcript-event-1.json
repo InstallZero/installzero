@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/InstallZero/installzero/main/schemas/transcript-event-1.json",
+  "title": "InstallZero transcript event, version 1",
+  "description": "One line of a run transcript (JSONL): the probe and installer agent write <run-id>.jsonl through the agent loop, the doctor through its own loop. The eval console, SFT export and scoring read these, so both engines write the same events.",
+  "type": "object",
+  "required": ["type"],
+  "oneOf": [
+    { "$ref": "#/$defs/start" },
+    { "$ref": "#/$defs/assistant" },
+    { "$ref": "#/$defs/tool" },
+    { "$ref": "#/$defs/server_error" },
+    { "$ref": "#/$defs/loop_stopped" },
+    { "$ref": "#/$defs/salvaged" },
+    { "$ref": "#/$defs/finish_from_text" },
+    { "$ref": "#/$defs/apply_fallback" },
+    { "$ref": "#/$defs/result" }
+  ],
+  "$defs": {
+    "start": {
+      "description": "First line. Probe and agent: the model label and the opening messages. Doctor: the problem, model, server URL and system prompt.",
+      "type": "object",
+      "required": ["type", "model", "system"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "start" },
+        "model": { "type": "string" },
+        "system": { "type": "string" },
+        "user": { "type": "string", "description": "Probe and agent: the first user message." },
+        "problem": { "type": "string", "description": "Doctor: the problem as the user described it." },
+        "url": { "type": "string", "description": "Doctor: the LLM server URL." }
+      }
+    },
+    "assistant": {
+      "description": "One model turn: its text, reasoning, tool calls and token usage.",
+      "type": "object",
+      "required": ["type", "content", "usage"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "assistant" },
+        "content": { "type": "string" },
+        "reasoning": { "type": "string", "description": "Missing in doctor transcripts from before October 2026." },
+        "tool_calls": {
+          "description": "The calls of this turn. The PowerShell engine writes a single call as an object rather than a one-element array, and sometimes no calls as {}; readers accept all of these, new writers write arrays.",
+          "oneOf": [
+            { "type": "array", "items": { "$ref": "#/$defs/tool_call" } },
+            { "$ref": "#/$defs/tool_call" },
+            { "type": "object", "maxProperties": 0 },
+            { "type": "null" }
+          ]
+        },
+        "usage": {
+          "description": "Token usage as the provider reported it; providers add their own fields.",
+          "type": ["object", "null"],
+          "properties": {
+            "prompt_tokens": { "type": "integer" },
+            "completion_tokens": { "type": "integer" },
+            "total_tokens": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "tool_call": {
+      "type": "object",
+      "required": ["id", "type", "function"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "const": "function" },
+        "function": {
+          "type": "object",
+          "required": ["name", "arguments"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string" },
+            "arguments": { "type": "string", "description": "The arguments as JSON text, as the model sent them (or {} when they did not parse)." }
+          }
+        },
+        "extra_content": { "type": "object", "description": "Provider data to send back with the call (Google thought signatures)." }
+      }
+    },
+    "tool": {
+      "description": "A tool call as run: its name, raw arguments and the output the model saw.",
+      "type": "object",
+      "required": ["type", "name", "arguments", "output"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "tool" },
+        "name": { "type": "string" },
+        "arguments": { "type": "string" },
+        "output": { "type": "string" }
+      }
+    },
+    "server_error": {
+      "description": "A failed model request; the loop retries.",
+      "type": "object",
+      "required": ["type", "temperature", "error"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "server_error" },
+        "temperature": { "type": "number" },
+        "error": { "type": "string" }
+      }
+    },
+    "loop_stopped": {
+      "description": "A reply cut off because the model started repeating itself.",
+      "type": "object",
+      "required": ["type", "temperature", "error"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "loop_stopped" },
+        "temperature": { "type": "number" },
+        "error": { "type": "string" }
+      }
+    },
+    "salvaged": {
+      "description": "The content of a write cut off by a loop, saved without the repeated tail.",
+      "type": "object",
+      "required": ["type", "name", "chars", "output"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "salvaged" },
+        "name": { "type": "string" },
+        "chars": { "type": "integer", "minimum": 0 },
+        "output": { "type": "string" }
+      }
+    },
+    "finish_from_text": {
+      "description": "Doctor: the model's answer was taken from JSON in its text rather than a finish call.",
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": { "type": { "const": "finish_from_text" } }
+    },
+    "apply_fallback": {
+      "description": "Doctor optimize mode: a remedy applied after the model stopped without applying it.",
+      "type": "object",
+      "required": ["type", "item", "output"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "apply_fallback" },
+        "item": { "type": "string" },
+        "output": { "type": "string" }
+      }
+    },
+    "result": {
+      "description": "Last line: the run's counters (probe and agent) or the doctor's result.",
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "result" },
+        "run": { "$ref": "#/$defs/run" },
+        "result": { "$ref": "#/$defs/doctor_result" }
+      },
+      "oneOf": [{ "required": ["run"] }, { "required": ["result"] }]
+    },
+    "run": {
+      "type": "object",
+      "required": ["steps", "tool_calls", "invalid_calls", "nudges", "server_errors", "prompt_tokens", "completion_tokens", "finished", "error", "seconds", "Finish"],
+      "$comment": "repeats, blocked, loops_stopped, stop_reason and last_long_text are written by every current run; transcripts from before mid-October 2026 lack them.",
+      "additionalProperties": false,
+      "properties": {
+        "steps": { "type": "integer", "minimum": 0, "description": "Model turns." },
+        "tool_calls": { "type": "integer", "minimum": 0 },
+        "invalid_calls": { "type": "integer", "minimum": 0 },
+        "repeats": { "type": "integer", "minimum": 0 },
+        "blocked": { "type": "integer", "minimum": 0 },
+        "loops_stopped": { "type": "integer", "minimum": 0 },
+        "nudges": { "type": "integer", "minimum": 0 },
+        "server_errors": { "type": "integer", "minimum": 0 },
+        "prompt_tokens": { "type": "integer", "minimum": 0 },
+        "completion_tokens": { "type": "integer", "minimum": 0 },
+        "finished": { "type": "boolean" },
+        "stop_reason": { "$ref": "#/$defs/stop_reason" },
+        "error": { "type": "string" },
+        "seconds": { "type": "number", "minimum": 0 },
+        "last_long_text": { "type": "string" },
+        "Finish": {
+          "description": "The finish call's arguments (or JSON found in the last text); null when the model never finished.",
+          "type": ["object", "null"]
+        }
+      }
+    },
+    "stop_reason": {
+      "description": "Why the loop ended. Empty in the transcript when it ended on an error (the error field says which); the result file then says error.",
+      "enum": ["", "finished", "timeout", "budget", "model-errors", "no-tool-calls", "unchanged-writes", "error"]
+    },
+    "doctor_result": {
+      "type": "object",
+      "required": ["run_id", "problem", "model", "finished", "root_cause", "evidence", "fix", "confidence", "seconds", "transcript", "error"],
+      "additionalProperties": false,
+      "properties": {
+        "run_id": { "type": "string" },
+        "mode": { "type": "string" },
+        "problem": { "type": "string" },
+        "model": { "type": "string" },
+        "backend": { "type": "string" },
+        "steps": { "type": "integer", "minimum": 0 },
+        "tool_calls": { "type": "integer", "minimum": 0 },
+        "refused_commands": { "type": "integer", "minimum": 0 },
+        "invalid_calls": { "type": "integer", "minimum": 0 },
+        "nudges": { "type": "integer", "minimum": 0 },
+        "server_errors": { "type": "integer", "minimum": 0 },
+        "prompt_tokens": { "type": "integer", "minimum": 0 },
+        "completion_tokens": { "type": "integer", "minimum": 0 },
+        "finished": { "type": "boolean" },
+        "root_cause": { "type": "string" },
+        "evidence": { "type": "string" },
+        "fix": { "type": "string" },
+        "confidence": { "type": "string" },
+        "applied": { "type": "array", "description": "Optimize mode: the remedies applied." },
+        "seconds": { "type": "number", "minimum": 0 },
+        "transcript": { "type": "string" },
+        "error": { "type": "string" }
+      }
+    }
+  }
+}

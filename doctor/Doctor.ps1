@@ -54,6 +54,8 @@ param(
     # Optimize mode: let the model apply the changes Remedies.ps1 can make
     # (power mode, sleep, Unity's GPU), each confirmed by the user at the console.
     [switch]$AllowApply,
+    # Write the system prompt, first user message and tools as JSON and stop.
+    [string]$PromptOut = '',
     [switch]$Quiet,
     [switch]$PassThru
 )
@@ -73,32 +75,8 @@ $script:OptimizeItems = @('memory', 'processors', 'power', 'sleep', 'gpu-driver'
 function Get-OptimizeRequest([string]$GpuLoad, $Checks) {
     $measured = ($Checks.Values | ForEach-Object { "$([array]::IndexOf($script:OptimizeItems, $_.Item) + 1). $($_.Item): $($_.Status) - $($_.Current)" }) -join "`n"
     $applyList = @($Checks.Values | Where-Object { $_.Status -eq 'CHANGE' -and $_.Apply })
-    $applyText = if ($AllowApply -and $applyList) {
-        "`nYou may apply these with apply_change, which checks again that the change is needed, asks the user to confirm, applies it and measures again: $(($applyList | ForEach-Object { "$($_.Item) ($($_.Apply))" }) -join '; '). Call apply_change once for each of them before finish; the user decides at the console."
-    } else { '' }
-    @"
-Review this PC's configuration for running rl-roboracer training for hours unattended. Check exactly these items, nothing else:
-
-1. memory: Docker's memory (system_facts, docker info mem) against physical RAM, and the [wsl2] memory= and swap= lines in $env:USERPROFILE\.wslconfig. Read that file with read_file before judging items 1 and 2 (it may not exist; then WSL gets half of RAM). If Docker's memory does not match memory=, the file is not in effect: recommend saving work and running wsl --shutdown, then restarting Docker Desktop. Otherwise recommend a change only if Docker has less than 8 GB while the PC could give more, if memory= leaves Windows less than 6 GB (the Unity clients run on Windows), or if swap=0.
-   Improves: the trainer (TensorFlow and its replay buffer) gets the memory intended for it, so long runs are not killed for running out of memory; or Windows and the Unity clients keep enough memory not to swap.
-2. processors: Docker's CPUs against the logical processors (Get-CimInstance Win32_Processor) and any processors= line in .wslconfig. A mismatch with processors= means the file is not in effect, as in item 1. Recommend a change only if a processors= limit gives Docker fewer than half of them.
-   Improves: the containers (trainer, ros-server bridges) get the CPUs intended for them, so steps are processed without waiting; or the Unity clients keep the cores they need to simulate at full speed.
-3. power, 4. sleep, 5. gpu-driver, 7. disk, 8. unity-gpu: measured by the installer just now (Remedies.ps1). These verdicts are final: do not re-check them, do not contradict them, and leave them out of fix (the installer adds their steps):
-$measured
-$applyText
-6. gpu-services: call gpu_drivers (ignore its driver version lines; item 5 covers them). With several NVIDIA GPUs, say which GPU each GPU service sees (gpu_drivers maps what each container sees to the host GPU by UUID) and recommend device_ids only if a larger GPU sits unused; name GPUs in device_ids by UUID ("GPU-..."), never by index, because indexes can differ inside containers. A FAILED in-container probe is a required fix: report its output. Services that are not running are not a finding. Also flag other programs holding most of the GPU memory (nvidia-smi).
-   Improves: a working in-container GPU lets the trainer and fly-brain use the GPU at all; moving a service to an unused larger GPU, or closing programs that hold GPU memory, gives training more GPU memory and speed.
-9. gpu-load: judge only from the measurement below, taken while the stack ran and before your own model was loaded. If the trainer logged no recent training step (within about 2 minutes), training was not running: UNKNOWN. If GPU memory peaked above 90% of the total, recommend fewer Unity clients (re-run the installer with a smaller -Clients) or closing the GPU programs listed. If average utilization stayed below 40% and memory below 60% while training ran, the GPU has room: recommend one more Unity client (re-run the installer with -Clients <current + 1>, at most 4). Otherwise OK.
-   Improves: fewer clients or closed programs keep training from crashing when the GPU runs out of memory; another client collects more environment steps per hour on a GPU that is otherwise idle part of the time.
-
-$GpuLoad
-
-An item that already looks fine needs no change; do not suggest optional tweaks. run_command already runs PowerShell: call cmdlets directly, not through powershell -Command or wmic. If a check cannot be done with your tools, say so for that item instead of guessing.
-Recommend a change only when the value you observed differs from what the item asks for; if the current value already meets it, the item is OK.
-In finish, root_cause has exactly nine lines, one per item in this order, each "<n>. <item>: OK", "<n>. <item>: CHANGE - <reason>" or "<n>. <item>: UNKNOWN - <reason>" (items 3, 4, 5, 7 and 8 copied from the measured verdicts). fix lists only CHANGE items among 1, 2, 6 and 9, numbered by item, each with its own Improves line directly under its steps, based on the item's Improves note and the values you observed. Layout:
-1. memory: <exact steps>
-   Improves: ...
-"@
+    $applyText = if ($AllowApply -and $applyList) { Get-PromptMessage 'doctor_apply_offer' @{ items = (($applyList | ForEach-Object { "$($_.Item) ($($_.Apply))" }) -join '; ') } } else { '' }
+    Get-Prompt 'doctor-optimize' @{ user_profile = $env:USERPROFILE; measured = $measured; apply_offer = $applyText; gpu_load = $GpuLoad }
 }
 
 $checks = $null
@@ -112,11 +90,7 @@ if ($Mode -eq 'optimize' -and -not $Problem.Trim()) {
     $Problem = Get-OptimizeRequest $load $checks
 }
 if ($Mode -eq 'optimize' -and $AllowApply) {
-    $script:DoctorToolSchemas += @{ type = 'function'; function = @{
-        name = 'apply_change'
-        description = 'Apply one settings change the review found needed. Checks again that it is needed, asks the user to confirm at the console, applies it and reports the value measured afterwards.'
-        parameters = @{ type = 'object'; properties = @{ item = @{ type = 'string'; enum = @($script:SettingChecks.Keys | Where-Object { $script:SettingChecks[$_].Apply }); description = 'The item to change.' } }; required = @('item') }
-    } }
+    $script:DoctorToolSchemas += Get-PromptTool 'doctor/apply_change' @{ items = @($script:SettingChecks.Keys | Where-Object { $script:SettingChecks[$_].Apply }) }
 }
 
 # One keypress within $Seconds; Y applies, anything else or no key skips.
@@ -189,18 +163,19 @@ function Merge-OptimizeResult([string]$RootCause, [string]$Fix) {
 }
 if (-not $Problem.Trim()) { throw 'Describe the problem with -Problem or -ProblemFile.' }
 if ($Mode -eq 'optimize') {
+    # Assigned into the existing finish tool, in this order: assignment moves
+    # keys in the serialized request, and this is the order models saw.
     $finishTool = ($script:DoctorToolSchemas | Where-Object { $_.function.name -eq 'finish' }).function
-    $finishTool.description = 'Report the review. Call once every item is checked or known to be uncheckable.'
-    $finishTool.parameters.properties.root_cause.description = 'One line per item: "<item>: OK", "<item>: CHANGE - <what and why>" or "<item>: UNKNOWN - <why>".'
-    $finishTool.parameters.properties.evidence.description = 'The values you observed for each item.'
-    $finishTool.parameters.properties.fix.description = 'Numbered recommended changes. Each: exact steps (settings to open, lines to put in .wslconfig, commands to run), then a line "Improves: <what gets better for training>". Empty if nothing needs to change.'
+    $review = (Get-PromptTool 'doctor/finish_optimize').function
+    $finishTool.description = $review.description
+    foreach ($p in 'root_cause', 'evidence', 'fix') { $finishTool.parameters.properties.$p.description = $review.parameters.properties.$p.description }
 }
 $Problem = Protect-Secrets $Problem
 
 # Every investigative call says why it is made, so the user can follow along.
 foreach ($t in $script:DoctorToolSchemas) {
     if ($t.function.name -eq 'finish') { continue }
-    $t.function.parameters.properties.purpose = @{ type = 'string'; description = 'Always set: one short sentence for the user saying what this call checks and why.' }
+    $t.function.parameters.properties.purpose = Get-PromptParameter 'purpose_doctor'
 }
 
 function Write-Step([string]$Text, [string]$Color = '') {
@@ -241,31 +216,13 @@ function Get-SystemPrompt {
     $services = if (Test-Path (Join-Path $RepoDir 'docker-compose.yml')) {
         ((Invoke-Docker ((Get-RepoComposeArgs) + @('config', '--services'))).Out.Trim() -split "`r?`n") -join ', '
     } else { "unknown: $RepoDir has no docker-compose.yml (the repo may not be cloned yet)" }
-    $task = if ($Mode -eq 'optimize') {
-        'The install works. Review the PC settings the user lists and recommend only changes that would make training faster or more reliable. Do not look for faults outside that list.'
-    } else { 'Find the root cause of the problem the user reports.' }
-    $conclude = if ($Mode -eq 'optimize') {
-        "- Report each listed item as OK, CHANGE or UNKNOWN. Recommend a change only when you observed a value that calls for it.`n- Call finish once every item is covered. You have at most $MaxSteps tool calls."
-    } else {
-        "- The root cause is the underlying condition, not the symptom. When something is missing, check whether it is not configured at all or configured but not running, and say which.`n- Call finish as soon as the evidence supports a root cause. You have at most $MaxSteps tool calls."
-    }
-    @"
-You are the InstallZero install doctor for rl-roboracer, a reinforcement-learning racing stack on a Windows PC. $task
+    Get-Prompt 'doctor' @{ optimize = $Mode -eq 'optimize'; apply = $Mode -eq 'optimize' -and $AllowApply; repo_dir = $RepoDir; services = $services; max_steps = $MaxSteps
+        os = "$((Get-CimInstance Win32_OperatingSystem).Caption)"; user = $env:USERNAME; now = (Get-Date -Format 'yyyy-MM-dd HH:mm') }
+}
 
-How the stack works:
-- Docker Desktop (WSL 2 backend) runs a docker compose project from $RepoDir with services: $services.
-- sim-controller runs the trainer (robotaxi.py) and TensorBoard. ros-server (and ros-server-1..3 for extra clients) bridge to Unity over ROS-TCP on host ports 10000-10003. mongo holds jobs and settings. dashboard is the web UI on http://127.0.0.1 (port 80). fly-brain is a gRPC server that fly courses reach at fly-brain:50061. madscientist proposes experiments.
-- Unity simulator clients run natively on Windows, each supervised by scripts\RunClientWrapper.ps1 in its own PowerShell window. They are started by scripts\Start-Stack.ps1 or scripts\Start-Clients.ps1, or at sign-in by scripts\install\Start-ClientAtLogon.ps1. Client N connects to 127.0.0.1:(10000+N); its ros-server dials back to host.docker.internal:(5005+N). A client must connect after its ros-server started.
-- Unity builds live under unity\Builds (latest, and per-client copies in instances\N) and ..\UnityBinary.
-
-How to work:
-- Gather evidence before concluding: check what is actually running, read logs and configuration. Prefer one specific check over guessing.
-$(if ($Mode -eq 'optimize' -and $AllowApply) { '- Every command is read-only. Settings change only through apply_change, for the items the user lists, and only after the user confirms. Put everything else in finish.' } else { '- You cannot change anything; every command is read-only. Put the fix in finish.' })
-- Secret values (API keys, passwords) are never shown: tool output has them replaced by <secret:NAME> or <secret>, and .env shows only their length. That a value is masked tells you it is set; ask the user to check its content when that matters.
-$conclude
-
-This PC: $((Get-CimInstance Win32_OperatingSystem).Caption), user $env:USERNAME, $(Get-Date -Format 'yyyy-MM-dd HH:mm').
-"@
+if ($PromptOut) {
+    [IO.File]::WriteAllText([IO.Path]::GetFullPath($PromptOut), (ConvertTo-Json ([ordered]@{ system = (Get-SystemPrompt); user = $Problem; tools = @($script:DoctorToolSchemas) }) -Depth 20), [Text.UTF8Encoding]::new($false))
+    return
 }
 
 $runId = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -305,7 +262,7 @@ try {
             if ($result.nudges -ge 3) { break }
             $result.nudges++
             Write-Step "  Out of tool calls: asking the doctor to conclude now (attempt $($result.nudges) of 3)." 'Yellow'
-            [void]$messages.Add(@{ role = 'user'; content = 'You have used all your tool calls. Call finish now with your best diagnosis.' })
+            [void]$messages.Add(@{ role = 'user'; content = (Get-PromptMessage 'doctor_out_of_calls') })
         }
 
         Compress-OldToolOutput $messages
@@ -349,7 +306,7 @@ try {
             if ($result.nudges -ge 2) { break }
             $result.nudges++
             [void]$messages.Add(@{ role = 'assistant'; content = $text })
-            [void]$messages.Add(@{ role = 'user'; content = 'Continue: use a tool to check something, or call finish with root_cause, evidence, fix and confidence.' })
+            [void]$messages.Add(@{ role = 'user'; content = (Get-PromptMessage 'doctor_continue') })
             continue
         }
 
@@ -370,10 +327,10 @@ try {
             $raw = & $argJson $c.function.arguments
             $a = $null
             try { $a = if ($raw.Trim()) { $raw | ConvertFrom-Json } else { [pscustomobject]@{} } }
-            catch { $result.invalid_calls++; $out = "error: arguments are not valid JSON: $raw" }
+            catch { $result.invalid_calls++; $out = Get-PromptMessage 'doctor_invalid_json' @{ arguments = $raw } }
             if ($null -ne $a) {
                 if ($name -eq 'finish') {
-                    $finish = $a; $out = 'Recorded.'
+                    $finish = $a; $out = Get-PromptMessage 'recorded'
                     Write-Step '  Concluding: writing up the findings.' 'Cyan'
                 } else {
                     $purpose = if ($a.PSObject.Properties.Name -contains 'purpose') { "$($a.purpose)" } else { '' }
