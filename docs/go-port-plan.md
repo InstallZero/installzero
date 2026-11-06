@@ -102,12 +102,23 @@ keeps working throughout.
   campaigns), the secret-guard corpus (`doctor/eval/Test-SecretGuard.ps1`),
   and valid and invalid install.md files.
 
+Done. The PowerShell scripts take `-PromptOut` to dump what they send the
+model. `schemas/validate.py` passes on every transcript and probe result on
+the eval host. `fixtures/Update-Fixtures.ps1` fills in the expected outputs
+from the PowerShell code, and with `-Check` it fails when they no longer
+match.
+
 ### 1. Leaf packages with fixture tests (about 1 week)
 
 `readonly`, `secrets`, `installmd`, and the loop detectors in `llm`. These
 are pure functions, so each is ported against the phase 0 fixtures, and the
 PowerShell versions run the same fixtures so the two can be compared case by
 case.
+
+Done; every fixture case passes in Go. Patterns stay in .NET syntax and run on
+`regexp2` (`internal/psrx`), so they behave as in PowerShell. The PowerShell
+read-only check is not reimplemented: Go runs `doctor/ReadOnly.ps1` in
+Windows PowerShell, because the check walks PowerShell's own syntax tree.
 
 ### 2. LLM client and agent loop (about 1 week)
 

@@ -1,3 +1,5 @@
 # The model sees these bytes; a CRLF checkout would change them.
 prompts/** text eol=lf
 fixtures/** text eol=lf
+# Kept byte-for-byte: it tests CRLF parsing.
+fixtures/installmd/docs/crlf.md -text

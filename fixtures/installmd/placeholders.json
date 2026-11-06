@@ -1,0 +1,7 @@
+{
+  "description": "Expand-Placeholders (agent/InstallMd.ps1).",
+  "cases": [
+    {"code": "cd {{REPO_DIR}} && ls {{INSTALL_DIR}}", "values": {"INSTALL_DIR": "/opt", "REPO_DIR": "/opt/app"}, "expanded": "cd /opt/app && ls /opt"},
+    {"code": "{{repo_dir}} {{OTHER}} {{REPO_DIR}}{{REPO_DIR}}", "values": {"REPO_DIR": "C:\\x\\$1"}, "expanded": "{{repo_dir}} {{OTHER}} C:\\x\\$1C:\\x\\$1"}
+  ]
+}
