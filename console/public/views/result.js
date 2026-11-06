@@ -1,5 +1,5 @@
 // One scored run in the drawer: overview, diagnosis of its misses, the
-// probe's transcript and the install document. Shared by Analysis and Losses.
+// probe's trajectory and the install document. Shared by Analysis and Losses.
 window.ResultView = (() => {
   const CAUSE = {
     not_explored: ['never looked', 'b-failed'], out_of_budget: ['out of budget', 'b-claimed'], found_not_written: ['found, not written', 'b-running'],
@@ -21,7 +21,7 @@ window.ResultView = (() => {
         <div class="card"><div class="kpi-l">Turns / tools</div><div class="kpi">${st.model_turns || '-'} / ${st.tool_calls || '-'}</div></div>
         <div class="card"><div class="kpi-l">Time</div><div class="kpi">${UI.dur(st.seconds)}</div></div></div>
       <div class="text-sm mb-3">Stopped: <b>${UI.esc(r.stop_reason || '')}</b> · prompt ${UI.esc(r.prompt_version || '')}${r.tuned_on ? ' <span class="badge b-claimed">tuned on this repo</span>' : ''} · ${UI.esc(r.target_env || '')}${r.job_id ? ` · <a class="text-sky-400" href="javascript:QueueView.openJob('${r.job_id}')">job</a>` : ''}</div>
-      <div class="tabs"><button data-tab="diag" class="active">Misses</button><button data-tab="tx">Transcript${r.has_transcript ? '' : ' (none)'}</button><button data-tab="md">Install document</button></div>
+      <div class="tabs"><button data-tab="diag" class="active">Misses</button><button data-tab="tx">Trajectory${r.has_transcript ? '' : ' (none)'}</button><button data-tab="md">Install document</button></div>
       <div id="rv-tab"></div>`);
     const tabs = { diag: () => diagnosis(r), tx: () => transcript(r), md: () => document_(r) };
     const show = k => { body.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === k)); tabs[k](); };
@@ -52,29 +52,13 @@ window.ResultView = (() => {
     if (!r.has_transcript) { el.innerHTML = '<div class="text-slate-400 text-sm">No transcript stored with this run.</div>'; return; }
     el.innerHTML = '<div class="text-slate-400 text-sm">Loading...</div>';
     const t = await UI.get('/api/transcript?id=' + encodeURIComponent(r._id));
-    const ev = (t && t.events) || [];
-    el.innerHTML = `<div class="flex gap-2 mb-2"><input id="rv-q" class="inp flex-1" placeholder="filter: text in reasoning, commands or outputs"><span id="rv-n" class="text-xs text-slate-400 self-center"></span></div><div id="rv-ev"></div>`;
-    let turn = 0;
-    const html = ev.map(e => {
-      if (e.t === 'start') return { text: `${e.system} ${e.user}`, h: `<details class="mb-2"><summary class="text-xs text-slate-400 cursor-pointer">System prompt and task (${UI.esc(e.model || '')})</summary><div class="log mt-1">${UI.esc(e.system)}\n\n--- task ---\n${UI.esc(e.user)}</div></details>` };
-      if (e.t === 'assistant') {
-        turn++;
-        return { text: `${e.reasoning} ${e.text} ${(e.calls || []).map(c => `${c.name} ${c.args}`).join(' ')}`, h: `<div class="mt-3 text-xs"><span class="text-sky-300 font-semibold">turn ${turn}</span>
-          ${e.reasoning ? `<div class="text-slate-400 italic whitespace-pre-wrap">${UI.esc(e.reasoning)}</div>` : ''}${e.text ? `<div class="whitespace-pre-wrap">${UI.esc(e.text)}</div>` : ''}
-          ${(e.calls || []).map(c => `<div class="code text-emerald-300 break-all">→ ${UI.esc(c.name)} ${UI.esc(c.args)}</div>`).join('')}</div>` };
-      }
-      if (e.t === 'tool') return { text: `${e.name} ${e.args} ${e.out}`, h: `<details class="ml-4"><summary class="text-xs text-slate-400 cursor-pointer">← ${UI.esc(e.name)}: ${UI.esc(String(e.out || '').split('\n')[0].slice(0, 140))}</summary><div class="log">${UI.esc(e.out)}</div></details>` };
-      if (e.t === 'error') return { text: e.text, h: `<div class="text-xs text-red-300 ml-4">server error: ${UI.esc(e.text)}</div>` };
-      return { text: '', h: '' };
-    });
-    const render = () => {
-      const q = el.querySelector('#rv-q').value.trim().toLowerCase();
-      const shown = q ? html.filter(x => String(x.text).toLowerCase().includes(q)) : html;
-      el.querySelector('#rv-ev').innerHTML = shown.map(x => x.h).join('');
-      if (q) el.querySelectorAll('#rv-ev details').forEach(d => d.open = true);
-      el.querySelector('#rv-n').textContent = q ? `${shown.length} of ${html.length} events` : `${turn} turns`;
-    };
-    el.querySelector('#rv-q').oninput = render; render();
+    if (!el.isConnected || !document.querySelector('#drawer-body .tabs button[data-tab="tx"].active')) return;
+    const bar = document.createElement('div');
+    bar.className = 'text-xs mb-2';
+    bar.innerHTML = `<a class="text-sky-400" href="#trajectories?id=${encodeURIComponent(r._id)}">Open in Trajectories</a>`;
+    const body = document.createElement('div');
+    el.replaceChildren(bar, body);
+    Trajectory.show(body, r, (t && t.events) || []);
   }
 
   function document_(r) {

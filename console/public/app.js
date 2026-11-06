@@ -69,10 +69,11 @@ window.UI = (() => {
     route(); refreshSummary(); setInterval(refreshSummary, 5000);
   }
 
-  // Model list for pickers: hosted from the server, local from online workers, and any seen in results.
+  // Model list for pickers: hosted from the server, local from online workers
+  // (also as hf:, served on Hugging Face Jobs), and any seen in results.
   async function modelOptions() {
     const m = await get('/api/models');
-    return [...new Set([...m.saved, ...m.local])];
+    return [...new Set([...m.saved, ...m.local, ...(m.hf || [])])];
   }
 
   return { api, get, post, put, del, toast, act, esc, badge, pct, dur, ago, shortModel, every, openDrawer, closeDrawer, register, start, modelOptions, onDrawerClose: null };

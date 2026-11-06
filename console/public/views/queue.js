@@ -1,6 +1,8 @@
-// Queue: workers, campaigns with progress, and all jobs with live status and logs.
+// Queue: workers, campaigns with progress, and jobs with live status and logs.
+// Jobs are one page at a time; search matches repo, model, worker, error and id.
 UI.register('queue', (() => {
-  let table, jobFilter = { status: '', type: '' };
+  let table, searchTimer, loadGen = 0, jobFilter = { status: '', type: '', q: '', page: 1 };
+  const PAGE = 50;
 
   function mount(root) {
     root.innerHTML = `
@@ -9,15 +11,21 @@ UI.register('queue', (() => {
         <div class="card xl:col-span-2"><h2>Campaigns</h2><div id="campaigns" class="text-sm"></div></div>
       </div>
       <div class="card">
-        <div class="flex items-center gap-2 mb-3">
+        <div class="flex flex-wrap items-center gap-2 mb-3">
           <h2 class="!mb-0 mr-auto">Jobs</h2>
+          <input id="f-q" class="inp w-64" placeholder="search repo, model, worker, error">
           <select id="f-status" class="inp"><option value="">all statuses</option><option value="queued">queued</option><option value="claimed,running">running</option><option value="done">done</option><option value="failed">failed</option><option value="cancelled">cancelled</option></select>
-          <select id="f-type" class="inp"><option value="">all types</option><option value="probe">probe</option><option value="build">build</option><option value="draft">draft</option><option value="measure">measure</option><option value="diagnose">diagnose</option><option value="lessons">lessons</option></select>
+          <select id="f-type" class="inp"><option value="">all types</option><option value="probe">probe</option><option value="build">build</option><option value="draft">draft</option><option value="measure">measure</option><option value="diagnose">diagnose</option><option value="lessons">lessons</option><option value="sft-build">sft-build</option><option value="train">train</option></select>
+          <div id="f-pager" class="flex items-center gap-2"></div>
         </div>
         <div id="jobs"></div>
       </div>`;
-    root.querySelector('#f-status').onchange = e => { jobFilter.status = e.target.value; loadJobs(); };
-    root.querySelector('#f-type').onchange = e => { jobFilter.type = e.target.value; loadJobs(); };
+    root.querySelector('#f-q').oninput = e => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => { jobFilter.q = e.target.value.trim(); jobFilter.page = 1; loadJobs(); }, 250);
+    };
+    root.querySelector('#f-status').onchange = e => { jobFilter.status = e.target.value; jobFilter.page = 1; loadJobs(); };
+    root.querySelector('#f-type').onchange = e => { jobFilter.type = e.target.value; jobFilter.page = 1; loadJobs(); };
 
     table = new Tabulator('#jobs', {
       layout: 'fitColumns', height: '58vh', index: '_id', placeholder: 'No jobs yet. Start one from New eval, or build or draft a repo from Repos.',
@@ -47,7 +55,10 @@ UI.register('queue', (() => {
     if (j.status === 'failed') return `<span class="text-red-300">${UI.esc((j.error || '').slice(0, 120))}</span>`;
     if (!['running', 'claimed'].includes(j.status)) return '';
     const frac = p.turn && p.max_turns ? p.turn / p.max_turns : null;
-    return `<div class="flex items-center gap-2"><span class="text-xs text-slate-300 w-24 truncate">${UI.esc(p.phase || j.status)}</span>` +
+    const head = `<div class="flex items-center gap-2"><span class="text-xs text-slate-300 w-24 truncate">${UI.esc(p.phase || j.status)}</span>`;
+    if (p.pct != null) return head + `<div class="bar flex-1" title="${UI.esc(p.examples || '')} examples${p.eta_s != null ? `, about ${UI.dur(p.eta_s)} left` : ''}"><div style="width:${p.pct}%"></div></div>` +
+      `<span class="text-xs w-24 text-right">${Math.round(p.pct)}%${p.eta_s != null ? ` · ${UI.dur(p.eta_s)}` : ''}</span></div>`;
+    return head +
       (frac != null ? `<div class="bar flex-1"><div style="width:${Math.round(frac * 100)}%"></div></div><span class="text-xs w-12 text-right">${p.turn}/${p.max_turns}</span>` : `<span class="text-xs text-slate-400 truncate">${UI.esc(p.msg || '')}</span>`) + '</div>';
   }
   function timeCell(j) {
@@ -69,11 +80,32 @@ UI.register('queue', (() => {
     loadJobs();
   }
 
+  function renderPager(data) {
+    const el = document.getElementById('f-pager');
+    if (!el) return;
+    const from = data.total ? (data.page - 1) * data.limit + 1 : 0;
+    const to = Math.min(data.total, data.page * data.limit);
+    el.innerHTML = `<button id="f-prev" class="btn btn-xs" ${data.page <= 1 ? 'disabled' : ''}>Prev</button>
+      <span class="text-xs text-slate-400 whitespace-nowrap">${from}–${to} of ${data.total}</span>
+      <button id="f-next" class="btn btn-xs" ${data.page >= data.pages ? 'disabled' : ''}>Next</button>`;
+    el.querySelector('#f-prev').onclick = () => { if (jobFilter.page > 1) { jobFilter.page--; loadJobs(); } };
+    el.querySelector('#f-next').onclick = () => { if (jobFilter.page < data.pages) { jobFilter.page++; loadJobs(); } };
+  }
+
   async function loadJobs() {
-    const q = new URLSearchParams({ limit: 500 });
+    if (!table) return;
+    const gen = ++loadGen;
+    const q = new URLSearchParams({ limit: PAGE, page: jobFilter.page || 1 });
     if (jobFilter.status) q.set('status', jobFilter.status);
     if (jobFilter.type) q.set('type', jobFilter.type);
-    try { table.replaceData(await UI.get('/api/jobs?' + q)); } catch (e) { }
+    if (jobFilter.q) q.set('q', jobFilter.q);
+    try {
+      const data = await UI.get('/api/jobs?' + q);
+      if (gen !== loadGen || !table) return;
+      jobFilter.page = data.page;
+      await table.replaceData(data.jobs);
+      renderPager(data);
+    } catch (e) { }
   }
 
   async function loadSide() {
@@ -125,5 +157,5 @@ UI.register('queue', (() => {
     },
     openJob,
   };
-  return { mount, unmount() { if (table) table.destroy(); table = null; } };
+  return { mount, unmount() { clearTimeout(searchTimer); if (table) table.destroy(); table = null; } };
 })());

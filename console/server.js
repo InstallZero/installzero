@@ -38,19 +38,21 @@ const col = name => db.collection(name);
 const repos = () => col('bench_repos'), datasets = () => col('bench_datasets'), jobs = () => col('bench_jobs'),
   campaigns = () => col('bench_campaigns'), results = () => col('bench_results'), workers = () => col('bench_workers'),
   snippets = () => col('bench_snippets'), transcripts = () => col('bench_transcripts'), lessons = () => col('bench_lessons'),
-  savedModels = () => col('bench_models');
+  savedModels = () => col('bench_models'), sftSets = () => col('bench_sft_sets'), trainRuns = () => col('bench_train_runs');
 
 const now = () => new Date();
 const newId = prefix => `${prefix}-${Date.now().toString(36)}${crypto.randomBytes(3).toString('hex')}`;
 const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
 const sha1 = s => crypto.createHash('sha1').update(s, 'utf8').digest('hex');
-const isLocalModel = m => !/^(anthropic|openai|xai|google):/.test(m);
+// hf:<file>.gguf is a worker's local GGUF served on Hugging Face Jobs: no GPU slot here.
+const isHostedModel = m => /^(anthropic|openai|xai|google):/.test(m);
+const isLocalModel = m => !isHostedModel(m) && !/^hf:/.test(m);
 // PowerShell's ConvertTo-Json sends a one-element array as a bare value.
 const toPorts = v => (v == null ? [] : Array.isArray(v) ? v : [v]).map(Number).filter(Boolean);
 const arr = v => v == null ? [] : Array.isArray(v) ? v : [v];
 const ACTIVE = ['claimed', 'running'];
 const PROBE_CAUSES = ['not_explored', 'out_of_budget', 'found_not_written'], BENCH_CAUSES = ['written_unmatched', 'not_observable'];
-const NO_DISTRO = ['draft', 'diagnose', 'lessons'];
+const NO_DISTRO = ['draft', 'diagnose', 'lessons', 'sft-build', 'train'];
 
 const clip = (s, n) => { s = s == null ? '' : typeof s === 'string' ? s : JSON.stringify(s); return s.length > n ? `${s.slice(0, n)} ...[${s.length - n} more chars]` : s; };
 // AgentLoop.ps1 transcript (JSON lines) -> compact events. Two 'start'
@@ -316,7 +318,7 @@ app.get('/api/models', wrap(async (req, res) => {
   const ws = await workers().find({ last_seen: { $gt: new Date(Date.now() - WORKER_TIMEOUT_MS) } }).toArray();
   const local = [...new Set(ws.flatMap(w => w.local_models || []))];
   const saved = (await savedModels().find().sort({ order: 1, _id: 1 }).toArray()).map(m => m._id);
-  res.json({ saved, local, hosted: saved.filter(m => !isLocalModel(m)) });
+  res.json({ saved, local, hosted: saved.filter(isHostedModel), hf: local.filter(m => /\.gguf$/i.test(m)).map(m => `hf:${m}`) });
 }));
 
 app.get('/api/campaigns', wrap(async (req, res) => {
@@ -355,7 +357,7 @@ app.post('/api/campaigns', wrap(async (req, res) => {
 
 function newJob(type, r, extra = {}) {
   return { _id: newId(type), type, repo: r._id, bench_id: r.bench_id, status: 'queued', priority: 0, attempts: 0,
-    gpu: type === 'probe' && extra.model ? isLocalModel(extra.model) : false, created_at: now(), log: [], ...extra };
+    gpu: type === 'train' || (type === 'probe' && extra.model ? isLocalModel(extra.model) : false), created_at: now(), log: [], ...extra };
 }
 
 // Single jobs: build a snapshot, draft a recipe, or one probe run.
@@ -384,8 +386,18 @@ app.get('/api/jobs', wrap(async (req, res) => {
   if (req.query.status) q.status = { $in: String(req.query.status).split(',') };
   if (req.query.campaign) q.campaign = req.query.campaign;
   if (req.query.type) q.type = req.query.type;
-  const list = await jobs().find(q, { projection: { log: 0, spec: 0 } }).sort({ created_at: -1 }).limit(Number(req.query.limit || 500)).toArray();
-  res.json(list);
+  const text = String(req.query.q || '').trim().slice(0, 200);
+  if (text) {
+    const re = new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    q.$or = ['bench_id', 'model', 'worker', 'error', '_id', 'lesson_set'].map(f => ({ [f]: re }));
+  }
+  const finite = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const limit = Math.min(200, Math.max(1, finite(req.query.limit) || 50));
+  const total = await jobs().countDocuments(q);
+  const pages = Math.max(1, Math.ceil(total / limit));
+  const page = Math.min(Math.max(1, finite(req.query.page) || 1), pages);
+  const list = await jobs().find(q, { projection: { log: 0, spec: 0 } }).sort({ created_at: -1 }).skip((page - 1) * limit).limit(limit).toArray();
+  res.json({ jobs: list, total, page, pages, limit });
 }));
 app.get('/api/job', wrap(async (req, res) => {
   const j = await jobs().findOne({ _id: req.query.id });
@@ -517,6 +529,8 @@ async function claimJob({ worker, free_slots, gpu_free, types }) {
 async function jobSpec(j) {
   if (j.type === 'lessons') return lessonsSpec(j);
   if (j.type === 'diagnose') return diagnoseSpec(j);
+  if (j.type === 'sft-build') return sftBuildSpec(j);
+  if (j.type === 'train') return trainSpec(j);
   const r = await repos().findOne({ _id: j.repo });
   const spec = { repo: r._id, bench_id: r.bench_id, url: r.url, recipe: r.recipe || null, facts: r.facts || [], serves: r.serves || '', why: r.install_notes || '' };
   if (j.type === 'probe' && j.guidance) {
@@ -652,6 +666,16 @@ app.post('/api/worker/complete', wrap(async (req, res) => {
       await lessons().updateOne({ _id: j.lesson_set }, { $set: { status: 'draft', items, notes: String(b.lessons.notes || ''), tokens: b.lessons.tokens || null, drafted_at: now() } });
     } else await lessons().updateOne({ _id: j.lesson_set }, { $set: { status: 'failed', error: b.error || status } });
   }
+  if (j.type === 'sft-build') {
+    if (status === 'done' && b.sft) {
+      const { samples, ...manifest } = b.sft;
+      await sftSets().updateOne({ _id: j.sft_set, job: j._id }, { $set: { manifest, samples: arr(samples), built_at: now(), worker: j.worker }, $unset: { error: '' } });
+    } else await sftSets().updateOne({ _id: j.sft_set, job: j._id }, { $set: { error: b.error || status } });
+  }
+  if (j.type === 'train') {
+    if (status === 'done' && b.train) await trainRuns().updateOne({ _id: j.train_run, job: j._id }, { $set: { output: b.train, finished_at: now(), worker: j.worker }, $unset: { error: '' } });
+    else await trainRuns().updateOne({ _id: j.train_run, job: j._id }, { $set: { error: b.error || status } });
+  }
   if ((j.type === 'probe' || j.type === 'measure') && status === 'done' && 'ports' in b) {
     await repos().updateOne({ _id: j.repo, 'snapshot.ports_known': { $ne: true } }, { $set: { 'snapshot.ports': toPorts(b.ports), 'snapshot.ports_known': true } });
   }
@@ -690,6 +714,8 @@ async function requeueOrFail(j, why) {
   await jobs().updateOne({ _id: j._id, status: { $in: ACTIVE } }, { $set: set, $push: { log: `[server] ${why}; ${retry ? 'requeued' : 'gave up'}` } });
   if (j.type === 'build') await repos().updateOne({ _id: j.repo }, { $set: { 'snapshot.status': retry ? 'queued' : 'failed' } });
   if (j.type === 'lessons' && !retry) await lessons().updateOne({ _id: j.lesson_set }, { $set: { status: 'failed', error: why } });
+  if (j.type === 'sft-build' && !retry) await sftSets().updateOne({ _id: j.sft_set, job: j._id }, { $set: { error: why } });
+  if (j.type === 'train' && !retry) await trainRuns().updateOne({ _id: j.train_run, job: j._id }, { $set: { error: why } });
 }
 
 // ---- results and analysis ------------------------------------------------------------
@@ -808,6 +834,195 @@ app.post('/api/lesson/action', wrap(async (req, res) => {
     if (await campaigns().countDocuments({ guidance: id })) return res.status(400).json({ error: 'campaigns used it; retire it instead' });
     await lessons().deleteOne({ _id: id });
   } else return res.status(400).json({ error: 'action is activate, retire, fork, redraft or delete' });
+  res.json({ ok: true });
+}));
+
+// ---- SFT sets and training runs ------------------------------------------------------
+//
+// An SFT set is a frozen export of probe trajectories worth imitating
+// (sft-build job, agent\eval\sft\Export-SftDataset.ps1 on the worker that has
+// the raw transcripts). A training run fine-tunes a local base model on one
+// with LoRA and drops the quantized GGUF into the doctor assets (train job,
+// Invoke-SftTrain.ps1); the worker then reports it as a local model, so a
+// campaign on the set's held-out repos scores it like any other model.
+
+// Base models a train job can start from. The id is a Hugging Face repo; the
+// form lets you type another.
+const TRAIN_BASES = [
+  { id: 'google/gemma-4-E4B-it', label: 'Gemma 4 E4B', prefix: 'gemma-4-E4B-it-iz', base_gguf: 'gemma-4-E4B-it-Q4_K_M.gguf', qlora: true, max_len: 16384, note: 'Fits a 16 GB GPU with QLoRA. Gated on Hugging Face: accept the licence and set HF_TOKEN on the worker.' },
+  { id: 'Qwen/Qwen3.5-9B', label: 'Qwen 3.5 9B', prefix: 'Qwen3.5-9B-iz', base_gguf: 'Qwen3.5-9B-Q4_K_M.gguf', qlora: true, max_len: 12288, note: 'Dense 9B; QLoRA on 16 GB with shorter sequences.' },
+  { id: 'ibm-granite/granite-4.1-8b', label: 'Granite 4.1 8B', prefix: 'granite-4.1-8b-iz', base_gguf: 'granite-4.1-8b-Q4_K_M.gguf', qlora: true, max_len: 12288, note: 'Dense 8B; QLoRA on 16 GB.' },
+  { id: 'openai/gpt-oss-20b', label: 'gpt-oss-20b', prefix: 'gpt-oss-20b-iz', base_gguf: 'gpt-oss-20b-MXFP4.gguf', qlora: false, max_len: 16384, note: 'MoE 21B in MXFP4; LoRA needs the bf16 weights and well over 16 GB of VRAM. Run it on a worker with an 80 GB GPU.' },
+];
+const SFT_DEFAULTS = { min_recall: 0.8, prompt_version: 'probe-5', max_repeats: 3, val_fraction: 0.1, context_tokens: 32768 };
+const TRAIN_DEFAULTS = { epochs: 2, lr: 1e-4, lora_r: 16, lora_alpha: 32, batch: 1, grad_accum: 16, max_examples: 0 };
+const QUANTS = ['Q4_K_M', 'Q5_K_M', 'Q6_K', 'Q8_0'];
+// Single-GPU Hugging Face Jobs flavors (train.py puts the model on one GPU),
+// with list prices in USD/hour for the console's cost estimates.
+const HF_FLAVORS = [
+  { id: 'a100-large', label: 'A100 80 GB', vram: 80, price: 2.5 },
+  { id: 'h200', label: 'H200 141 GB', vram: 141, price: 5 },
+  { id: 'rtx-pro-6000', label: 'RTX PRO 6000 96 GB', vram: 96, price: 2.75 },
+  { id: 'l40sx1', label: 'L40S 48 GB', vram: 48, price: 1.8 },
+  { id: 'a10g-large', label: 'A10G 24 GB', vram: 24, price: 1.5 },
+  { id: 'l4x1', label: 'L4 24 GB', vram: 24, price: 0.8 },
+];
+const HF_DEFAULTS = { flavor: 'a100-large', timeout_h: 6 };
+const isHfRun = R => !!(R.compute && R.compute.target === 'hf');
+
+const pvQuery = pv => ({ $regex: `^${String(pv).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\+|$)` });
+const sftCandidateQuery = f => ({ delivered: true, recall: { $gte: Number(f.min_recall) }, prompt_version: pvQuery(f.prompt_version), target_env: /^wsl/ });
+async function nextSeqId(coll, prefix) {
+  const n = (await coll.countDocuments()) + 1;
+  let id = `${prefix}-${n}`; for (let k = n + 1; await coll.findOne({ _id: id }); k++) id = `${prefix}-${k}`;
+  return id;
+}
+// A set's or run's state follows its latest job, so retrying or cancelling from the queue shows here.
+async function withJobs(docs, done, active) {
+  const js = new Map((await jobs().find({ _id: { $in: docs.map(d => d.job).filter(Boolean) } }, { projection: { status: 1, progress: 1, worker: 1, error: 1, started_at: 1, finished_at: 1 } }).toArray()).map(j => [j._id, j]));
+  return docs.map(d => {
+    const j = js.get(d.job) || null;
+    const status = !j ? (d.manifest || d.output ? done : 'failed') : j.status === 'done' ? done : ACTIVE.includes(j.status) ? active : j.status;
+    return { ...d, status, job_info: j };
+  });
+}
+
+async function sftBuildSpec(j) {
+  const S = await sftSets().findOne({ _id: j.sft_set });
+  if (!S) throw new Error(`no SFT set ${j.sft_set}`);
+  const candidates = await results().find(sftCandidateQuery(S.filter), { projection: { repo: 1, model: 1, provider: 1, recall: 1, delivered: 1, prompt_version: 1, transcript_path: 1, target_env: 1, campaign: 1, run_at: 1 } }).toArray();
+  return { set_id: S._id, filter: S.filter, heldout_repos: S.heldout_repos, val_fraction: S.val_fraction, context_tokens: S.context_tokens, include_reasoning: !!S.include_reasoning, candidates };
+}
+async function trainSpec(j) {
+  const R = await trainRuns().findOne({ _id: j.train_run });
+  if (!R) throw new Error(`no training run ${j.train_run}`);
+  const S = await sftSets().findOne({ _id: R.sft_set });
+  if (!S || !S.manifest) throw new Error(`SFT set ${R.sft_set} is not built`);
+  return { run_id: R._id, base_model: R.base_model, set: { id: S._id, path: S.manifest.path, host: S.manifest.host }, params: R.params, quant: R.quant, output_name: R.output_name,
+    compute: R.compute || { target: 'local' } };
+}
+
+app.get('/api/sft/options', wrap(async (req, res) => {
+  const pvs = (await results().distinct('prompt_version', { delivered: true })).filter(Boolean);
+  const base = [...new Set(pvs.map(v => String(v).split('+')[0]))].sort().reverse();
+  res.json({ defaults: SFT_DEFAULTS, train_defaults: TRAIN_DEFAULTS, bases: TRAIN_BASES, quants: QUANTS, prompt_versions: base, hf_flavors: HF_FLAVORS, hf_defaults: HF_DEFAULTS,
+    datasets: (await datasets().find({}, { projection: { name: 1, role: 1, repos: 1 } }).toArray()).map(d => ({ _id: d._id, name: d.name, role: d.role || '', repos: d.repos.length })) });
+}));
+
+// What a set with these settings would start from, before any transcript is read.
+app.get('/api/sft/preview', wrap(async (req, res) => {
+  const f = { ...SFT_DEFAULTS, ...req.query };
+  const rows = await results().find(sftCandidateQuery(f), { projection: { repo: 1, model: 1, provider: 1 } }).toArray();
+  const held = new Set(await benchIdsOf((await datasets().find({ _id: { $in: arr(req.query.heldout).flatMap(s => String(s).split(',')).filter(Boolean) } }).toArray()).flatMap(d => d.repos)));
+  const byProvider = {};
+  for (const r of rows) {
+    const p = r.provider || (/^(\w+):/.test(r.model || '') ? r.model.split(':')[0] : 'local');
+    const x = byProvider[p] = byProvider[p] || { provider: p, runs: 0, heldout_runs: 0, repos: new Set(), models: new Set() };
+    x.runs++; if (held.has(r.repo)) x.heldout_runs++; x.repos.add(r.repo); x.models.add(r.model);
+  }
+  res.json({ candidates: rows.length, heldout_repos: held.size, providers: Object.values(byProvider).map(x => ({ ...x, repos: x.repos.size, models: [...x.models] })).sort((a, b) => b.runs - a.runs) });
+}));
+
+app.get('/api/sft/sets', wrap(async (req, res) => {
+  const list = await sftSets().find({}, { projection: { samples: 0 } }).sort({ created_at: -1 }).toArray();
+  const used = await trainRuns().aggregate([{ $group: { _id: '$sft_set', n: { $sum: 1 } } }]).toArray();
+  const out = await withJobs(list, 'ready', 'building');
+  for (const s of out) s.train_runs = (used.find(u => u._id === s._id) || {}).n || 0;
+  res.json(out);
+}));
+app.get('/api/sft/set', wrap(async (req, res) => {
+  const S = await sftSets().findOne({ _id: req.query.id });
+  if (!S) return res.status(404).json({ error: 'no such SFT set' });
+  res.json((await withJobs([S], 'ready', 'building'))[0]);
+}));
+
+app.post('/api/sft/sets', wrap(async (req, res) => {
+  const b = req.body, num = (v, d) => (v === '' || v == null || !Number.isFinite(Number(v)) ? d : Number(v));
+  const filter = { min_recall: num(b.min_recall, SFT_DEFAULTS.min_recall), prompt_version: String(b.prompt_version || SFT_DEFAULTS.prompt_version),
+    max_repeats: num(b.max_repeats, SFT_DEFAULTS.max_repeats), providers: arr(b.providers).filter(Boolean), models: arr(b.models).filter(Boolean) };
+  const heldDs = await datasets().find({ _id: { $in: arr(b.heldout_datasets).filter(Boolean) } }).toArray();
+  const S = { _id: await nextSeqId(sftSets(), 'sft'), name: String(b.name || '').trim(), notes: String(b.notes || ''), filter,
+    heldout_datasets: heldDs.map(d => d._id), heldout_repos: await benchIdsOf([...new Set(heldDs.flatMap(d => d.repos))]),
+    val_fraction: Math.min(0.5, Math.max(0, num(b.val_fraction, SFT_DEFAULTS.val_fraction))), context_tokens: Math.max(4096, num(b.context_tokens, SFT_DEFAULTS.context_tokens)),
+    include_reasoning: !!b.include_reasoning, created_at: now() };
+  if (!S.name) S.name = S._id;
+  if (!(await results().countDocuments(sftCandidateQuery(filter)))) return res.status(400).json({ error: 'no delivered WSL runs match: lower the recall or pick another prompt version' });
+  const j = newJob('sft-build', { _id: null, bench_id: S._id }, { sft_set: S._id, priority: 20 });
+  S.job = j._id;
+  await sftSets().insertOne(S);
+  await jobs().insertOne(j);
+  res.json(S);
+}));
+
+app.post('/api/sft/set/action', wrap(async (req, res) => {
+  const { id, action } = req.body, S = await sftSets().findOne({ _id: id });
+  if (!S) return res.status(404).json({ error: 'no such SFT set' });
+  const cur = S.job ? await jobs().findOne({ _id: S.job }) : null;
+  if (action === 'rebuild') {
+    if (cur && ['queued', ...ACTIVE].includes(cur.status)) return res.status(400).json({ error: `already ${cur.status}` });
+    if (S.manifest && await trainRuns().countDocuments({ sft_set: id })) return res.status(400).json({ error: 'training runs used this set; create a new set instead so they stay traceable' });
+    const j = newJob('sft-build', { _id: null, bench_id: S._id }, { sft_set: S._id, priority: 20 });
+    await jobs().insertOne(j);
+    await sftSets().updateOne({ _id: id }, { $set: { job: j._id }, $unset: { manifest: '', samples: '', error: '', built_at: '' } });
+  } else if (action === 'delete') {
+    if (await trainRuns().countDocuments({ sft_set: id })) return res.status(400).json({ error: 'training runs used this set; delete them first' });
+    if (cur && ACTIVE.includes(cur.status)) return res.status(400).json({ error: 'cancel the build first' });
+    if (cur && cur.status === 'queued') await jobs().updateOne({ _id: cur._id }, { $set: { status: 'cancelled', finished_at: now() } });
+    await sftSets().deleteOne({ _id: id });
+  } else return res.status(400).json({ error: 'action is rebuild or delete' });
+  res.json({ ok: true });
+}));
+
+app.get('/api/train/runs', wrap(async (req, res) => {
+  res.json(await withJobs(await trainRuns().find().sort({ created_at: -1 }).toArray(), 'done', 'training'));
+}));
+
+app.post('/api/train/runs', wrap(async (req, res) => {
+  const b = req.body, S = await sftSets().findOne({ _id: b.sft_set });
+  if (!S || !S.manifest) return res.status(400).json({ error: 'pick a built SFT set' });
+  const baseModel = String(b.base_model || '').trim();
+  if (!baseModel) return res.status(400).json({ error: 'pick a base model' });
+  const known = TRAIN_BASES.find(x => x.id === baseModel);
+  const num = (v, d) => (v === '' || v == null || !Number.isFinite(Number(v)) ? d : Number(v));
+  let compute = { target: 'local' };
+  if (b.compute === 'hf') {
+    const fl = HF_FLAVORS.find(f => f.id === b.hf_flavor) || HF_FLAVORS.find(f => f.id === HF_DEFAULTS.flavor);
+    compute = { target: 'hf', flavor: fl.id, price: fl.price, timeout_h: Math.min(48, Math.max(0.25, num(b.hf_timeout_h, HF_DEFAULTS.timeout_h))) };
+  }
+  const params = { epochs: num(b.epochs, TRAIN_DEFAULTS.epochs), lr: num(b.lr, TRAIN_DEFAULTS.lr), lora_r: num(b.lora_r, TRAIN_DEFAULTS.lora_r),
+    lora_alpha: num(b.lora_alpha, TRAIN_DEFAULTS.lora_alpha), batch: num(b.batch, TRAIN_DEFAULTS.batch), grad_accum: num(b.grad_accum, TRAIN_DEFAULTS.grad_accum),
+    max_len: num(b.max_len, known ? known.max_len : 16384), qlora: b.qlora == null ? (known && compute.target === 'local' ? known.qlora : compute.target === 'local') : !!b.qlora,
+    max_examples: num(b.max_examples, 0) };
+  const quant = QUANTS.includes(b.quant) ? b.quant : QUANTS[0];
+  if (compute.target === 'hf' && !/^[\w.-]+\/[\w.-]+$/.test(baseModel)) return res.status(400).json({ error: 'Hugging Face Jobs need a Hub repo id (org/model) as the base' });
+  const id = await nextSeqId(trainRuns(), 'ft');
+  const R = { _id: id, name: String(b.name || '').trim() || id, base_model: baseModel, base_label: known ? known.label : baseModel, sft_set: S._id, params, quant, compute,
+    output_name: `${known ? known.prefix : slug(baseModel.split('/').pop())}-${id}`, notes: String(b.notes || ''), created_at: now() };
+  const j = newJob('train', { _id: null, bench_id: id }, { train_run: id, model: baseModel, priority: num(b.priority, 50), gpu: !isHfRun(R) });
+  R.job = j._id;
+  await trainRuns().insertOne(R);
+  await jobs().insertOne(j);
+  res.json(R);
+}));
+
+app.post('/api/train/run/action', wrap(async (req, res) => {
+  const { id, action } = req.body, R = await trainRuns().findOne({ _id: id });
+  if (!R) return res.status(404).json({ error: 'no such training run' });
+  const cur = R.job ? await jobs().findOne({ _id: R.job }) : null;
+  if (action === 'cancel') {
+    if (!cur) return res.status(400).json({ error: 'no job' });
+    if (cur.status === 'queued') await jobs().updateOne({ _id: cur._id }, { $set: { status: 'cancelled', finished_at: now() } });
+    else if (ACTIVE.includes(cur.status)) await jobs().updateOne({ _id: cur._id }, { $set: { cancel_requested: true } });
+  } else if (action === 'retry') {
+    if (cur && ['queued', ...ACTIVE].includes(cur.status)) return res.status(400).json({ error: `already ${cur.status}` });
+    const j = newJob('train', { _id: null, bench_id: id }, { train_run: id, model: R.base_model, priority: cur ? cur.priority : 50, gpu: !isHfRun(R) });
+    await jobs().insertOne(j);
+    await trainRuns().updateOne({ _id: id }, { $set: { job: j._id }, $unset: { output: '', error: '', finished_at: '' } });
+  } else if (action === 'delete') {
+    if (cur && ACTIVE.includes(cur.status)) return res.status(400).json({ error: 'cancel it first' });
+    if (cur && cur.status === 'queued') await jobs().updateOne({ _id: cur._id }, { $set: { status: 'cancelled', finished_at: now() } });
+    await trainRuns().deleteOne({ _id: id });
+  } else return res.status(400).json({ error: 'action is cancel, retry or delete' });
   res.json({ ok: true });
 }));
 

@@ -45,7 +45,8 @@ UI.register('launch', (() => {
         ? '<button type="button" class="m-edit text-slate-400 hover:text-white" title="Rename">✎</button><button type="button" class="m-del text-slate-400 hover:text-red-300" title="Remove">×</button>' : ''}</label>`);
       return true;
     };
-    models.forEach((m, i) => addModel(m, i === 0));
+    models.forEach((m, i) => addModel(m, i === 0 && !params.models));
+    if (params.models) for (const m of params.models.split(',').filter(Boolean)) { if (!addModel(m, true, true)) boxes().find(b => b.value === m).checked = true; }
     const custom = root.querySelector('#custom');
     const addCustom = () => { const v = custom.value.trim(); if (!v) return; if (addModel(v, true, true)) checkName(v); else UI.toast(`${v} is already in the list`); custom.value = ''; estimate(); };
     root.querySelector('#add-model').onclick = addCustom;

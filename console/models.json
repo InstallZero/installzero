@@ -10,6 +10,11 @@
     { "id": "google:gemini-4-argon", "added": "2026-10-18", "source": "history" },
     { "id": "gpt-oss-20b-MXFP4.gguf", "added": "2026-10-18", "source": "history" },
     { "id": "granite-4.1-8b-Q4_K_M.gguf", "added": "2026-10-18", "source": "history" },
-    { "id": "openai:gpt-6-astra", "added": "2026-10-18", "source": "history" }
+    { "id": "openai:gpt-6-astra", "added": "2026-10-18", "source": "history" },
+    { "id": "gemma-4-E4B-it-iz-ft-2-Q4_K_M.gguf", "added": "2026-11-01", "source": "campaign" },
+    { "id": "gemma-4-E4B-it-iz-ft-3-Q4_K_M.gguf", "added": "2026-11-02", "source": "campaign" },
+    { "id": "hf:gemma-4-E4B-it-Q4_K_M.gguf", "added": "2026-11-03", "source": "campaign" },
+    { "id": "hf:gemma-4-E4B-it-iz-ft-3-Q4_K_M.gguf", "added": "2026-11-03", "source": "campaign" },
+    { "id": "hf:gemma-4-E4B-it-iz-ft-4-Q4_K_M.gguf", "added": "2026-11-05", "source": "campaign" }
   ]
 }
