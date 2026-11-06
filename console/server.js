@@ -467,6 +467,11 @@ app.post('/api/worker/heartbeat', wrap(async (req, res) => {
       await jobs().insertOne(newJob('measure', r, { priority: 100 }));
     }
   }
+  // A ready snapshot the worker no longer has (deleted to free disk) cannot run.
+  if (Array.isArray(b.snapshots)) {
+    await repos().updateMany({ 'snapshot.worker': b.worker, 'snapshot.status': 'ready', bench_id: { $nin: b.snapshots.map(s => s.bench_id) } },
+      { $set: { 'snapshot.status': 'missing' } });
+  }
   // Jobs this worker holds but no longer runs (it restarted) go back to the queue.
   const orphans = await jobs().find({ worker: b.worker, status: { $in: ACTIVE }, _id: { $nin: b.running || [] }, claimed_at: { $lt: new Date(Date.now() - 30000) } }).toArray();
   for (const j of orphans) await requeueOrFail(j, `worker ${b.worker} restarted`);
