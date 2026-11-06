@@ -117,6 +117,7 @@ try {
                 $evalArgs = @{ Repo = $bid; Probe = $true; Wsl = $distro; Target = $r.target; ReposFile = $reposFile; ResultOut = $rowFile }
                 if (Test-Path $hiddenDir) { $evalArgs.HidePaths = @($hiddenDir) }
                 if ($job.max_turns) { $evalArgs.MaxTurns = [int]$job.max_turns }
+                if ($job.engine) { $evalArgs.Engine = [string]$job.engine }
                 if ($spec.guidance -and "$($spec.guidance.text)".Trim()) {
                     $evalArgs.GuidanceFile = Join-Path $work 'guidance.json'
                     [IO.File]::WriteAllText($evalArgs.GuidanceFile, (@{ id = $spec.guidance.id; text = $spec.guidance.text } | ConvertTo-Json), $utf8)

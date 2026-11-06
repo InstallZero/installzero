@@ -12,6 +12,9 @@ UI.register('launch', (() => {
           <div><label class="lbl">Runs per repo and model</label><input id="runs" type="number" min="1" value="1" class="inp w-full"></div>
           <div><label class="lbl">Max turns</label><input id="turns" type="number" min="5" value="40" class="inp w-full"></div>
           <div><label class="lbl">Priority (higher runs first)</label><input id="prio" type="number" value="0" class="inp w-full"></div>
+          <div><label class="lbl">Probe engine (both: an A/B check of the Go port)</label><div id="engines" class="flex gap-4 text-sm mt-1">
+            <label class="flex items-center gap-2"><input type="checkbox" value="ps" checked> PowerShell</label>
+            <label class="flex items-center gap-2"><input type="checkbox" value="go"> Go</label></div></div>
           <div><label class="lbl">Probe guidance (an active lesson set from the Losses tab)</label><select id="guid" class="inp w-full"><option value="">none (base prompt)</option></select>
             <div id="guid-info" class="text-xs mt-1"></div></div>
           <div class="col-span-2"><label class="flex items-center gap-2 text-sm"><input id="diag" type="checkbox" checked> Diagnose misses after each run (one hosted-model call per run with misses; feeds the Losses tab)</label></div>
@@ -77,11 +80,12 @@ UI.register('launch', (() => {
       ed.addEventListener('blur', () => finish(true));
     });
 
+    const engines = () => [...root.querySelectorAll('#engines input:checked')].map(i => i.value);
     const estimate = () => {
       const d = dsList.find(x => x._id === ds.value);
-      const n = [...modelsEl.querySelectorAll('input:checked')].length, runs = Number(root.querySelector('#runs').value || 1);
+      const n = [...modelsEl.querySelectorAll('input:checked')].length, runs = Number(root.querySelector('#runs').value || 1), e = engines().length;
       root.querySelector('#ds-info').textContent = d ? `${d.description || ''} ${d.frozen ? '(frozen)' : ''}` : '';
-      root.querySelector('#est').textContent = d ? `${d.runnable * n * runs} jobs (${d.runnable} runnable repos × ${n} models × ${runs} runs)` : '';
+      root.querySelector('#est').textContent = d ? `${d.runnable * n * e * runs} jobs (${d.runnable} runnable repos × ${n} models${e > 1 ? ` × ${e} engines` : ''} × ${runs} runs)` : '';
       const L = sets.find(x => x._id === guid.value), info = root.querySelector('#guid-info');
       if (!L || !d) { info.innerHTML = ''; return; }
       const tuned = d.repos.filter(id => (L.source.repos || []).includes(benchOf.get(id))).length;
@@ -91,7 +95,8 @@ UI.register('launch', (() => {
     root.addEventListener('change', estimate); root.addEventListener('input', estimate); estimate();
 
     root.querySelector('#go').onclick = async () => {
-      const body = { dataset: ds.value, name: root.querySelector('#name').value.trim(), models: [...modelsEl.querySelectorAll('input:checked')].map(i => i.value),
+      if (!engines().length) return UI.toast('pick at least one engine', true);
+      const body = { dataset: ds.value, name: root.querySelector('#name').value.trim(), models: [...modelsEl.querySelectorAll('input:checked')].map(i => i.value), engines: engines(),
         runs: Number(root.querySelector('#runs').value), max_turns: Number(root.querySelector('#turns').value), priority: Number(root.querySelector('#prio').value),
         guidance: guid.value || null, diagnose: root.querySelector('#diag').checked };
       const r = await UI.act(() => UI.post('/api/campaigns', body));

@@ -42,6 +42,9 @@ param(
     [Parameter(ParameterSetName = 'probe')][int]$MaxTurns = 0,
     # Lesson set from the eval console, passed to Probe.ps1.
     [Parameter(ParameterSetName = 'probe')][string]$GuidanceFile = '',
+    # ps runs Probe.ps1; go runs the Go probe (installzero probe, WSL only),
+    # built from this checkout unless IZ_GO_EXE names a binary.
+    [Parameter(ParameterSetName = 'probe')][ValidateSet('ps', 'go')][string]$Engine = 'ps',
     [Parameter(ParameterSetName = 'score', Mandatory)][string]$Score,
     [Parameter(ParameterSetName = 'score')][string]$ProbeResult = '',
     [Parameter(ParameterSetName = 'probe')][Parameter(ParameterSetName = 'score')][string]$ReplayReport = '',
@@ -65,6 +68,27 @@ $resultsFile = Join-Path $resultsDir 'results.jsonl'
 New-Item -ItemType Directory -Force $resultsDir | Out-Null
 $agentDir = Split-Path $PSScriptRoot
 $modelArgs = @(); if ($Remote) { $modelArgs += @('-Remote', $Remote) } elseif ($Model) { $modelArgs += @('-Model', $Model) }
+
+# The Go probe for this checkout, built once per commit (and again when the
+# Go sources have uncommitted changes).
+function Get-GoProbe {
+    if ($env:IZ_GO_EXE) {
+        if (-not (Test-Path $env:IZ_GO_EXE)) { throw "IZ_GO_EXE is $env:IZ_GO_EXE, which does not exist" }
+        return $env:IZ_GO_EXE
+    }
+    $repoRoot = Split-Path $agentDir
+    if (-not (Get-Command go -ErrorAction SilentlyContinue)) { throw 'the go engine needs Go (go.dev/dl) to build installzero, or IZ_GO_EXE set to a built binary' }
+    $rev = (& git -C $repoRoot rev-parse --short=12 HEAD 2>$null)
+    $dirty = (& git -C $repoRoot status --porcelain -- cmd internal prompts catalog go.mod go.sum 2>$null)
+    $binDir = Join-Path $env:LOCALAPPDATA 'installzero\bin'
+    New-Item -ItemType Directory -Force $binDir | Out-Null
+    $exe = Join-Path $binDir "installzero-$(if ($rev) { $rev } else { 'dev' })$(if ($dirty) { '-dirty' }).exe"
+    if ($dirty -or -not $rev -or -not (Test-Path $exe)) {
+        Push-Location $repoRoot
+        try { & go build -o $exe ./cmd/installzero; if ($LASTEXITCODE) { throw "go build failed ($LASTEXITCODE)" } } finally { Pop-Location }
+    }
+    $exe
+}
 
 function Get-Repo([string]$Id) {
     $r = $set | Where-Object id -eq $Id
@@ -154,12 +178,29 @@ switch ($PSCmdlet.ParameterSetName) {
         if ($MaxTurns) { $probeArgs.MaxTurns = $MaxTurns }
         if ($GuidanceFile) { $probeArgs.GuidanceFile = $GuidanceFile }
         if ($Remote) { $probeArgs.Remote = $Remote } elseif ($Model) { $probeArgs.Model = $Model }
-        & (Join-Path $agentDir 'Probe.ps1') @probeArgs
+        if ($Engine -eq 'go') {
+            if (-not $Wsl) { throw 'the go engine probes WSL installs only (-Wsl)' }
+            $exe = Get-GoProbe
+            $goArgs = @('probe', '--wsl', $Wsl, '--out', $out, '--result', $res)
+            if ($Target) { $goArgs += @('--target', $Target) }
+            if ($NoDocs) { $goArgs += '--no-docs' }
+            foreach ($h in @($probeArgs.HidePaths)) { if ($h) { $goArgs += @('--hide', $h) } }
+            if ($Context) { $goArgs += @('--context', $Context) }
+            if ($MaxTurns) { $goArgs += @('--max-turns', $MaxTurns) }
+            if ($GuidanceFile) { $goArgs += @('--guidance', $GuidanceFile) }
+            if ($Remote) { $goArgs += @('--remote', $Remote) } elseif ($Model) { $goArgs += @('--model', $Model) }
+            Write-Host "Go probe: $exe $($goArgs -join ' ')"
+            & $exe @goArgs | Out-Host
+            if ($LASTEXITCODE) { throw "the Go probe failed (exit $LASTEXITCODE)" }
+        } else {
+            & (Join-Path $agentDir 'Probe.ps1') @probeArgs
+        }
         $probeRes = Get-Content $res -Raw | ConvertFrom-Json
         $transcript = Join-Path $resultsDir "$($r.id)-$stamp.transcript.jsonl"
         if ($probeRes.transcript -and (Test-Path $probeRes.transcript)) { Copy-Item $probeRes.transcript $transcript } else { $transcript = '' }
         $s = Measure-InstallMd $r $(if (Test-Path $out) { $out } else { '' }) $probeRes $(if ($ReplayReport) { Get-Content $ReplayReport -Raw | ConvertFrom-Json })
         $s['transcript'] = $transcript
+        $s['engine'] = $Engine
         Add-Content -Path $resultsFile -Value ($s | ConvertTo-Json -Depth 8 -Compress) -Encoding UTF8
         if ($ResultOut) { [IO.File]::WriteAllText($ResultOut, ($s | ConvertTo-Json -Depth 8 -Compress), [Text.UTF8Encoding]::new($false)) }
         Write-Score $s
@@ -174,7 +215,7 @@ switch ($PSCmdlet.ParameterSetName) {
         if (-not (Test-Path $resultsFile)) { Write-Host 'No results yet.'; return }
         $rows = @(Get-Content $resultsFile | ForEach-Object { $_ | ConvertFrom-Json })
         Write-Host "Probe evaluation: $($rows.Count) scored runs ($resultsFile)" -ForegroundColor Cyan
-        foreach ($g in ($rows | Group-Object { "$($_.model) | $($_.prompt_version) | no_docs=$($_.no_docs)" })) {
+        foreach ($g in ($rows | Group-Object { "$($_.model) | $($_.prompt_version) | no_docs=$($_.no_docs)$(if ($_.engine -and $_.engine -ne 'ps') { " | engine=$($_.engine)" })" })) {
             $ok = @($g.Group | Where-Object { Test-Delivered $_ })
             $failed = @($g.Group | Where-Object { -not (Test-Delivered $_) })
             $line = "  {0}: delivered {1} of {2}" -f $g.Name, $ok.Count, $g.Count

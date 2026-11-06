@@ -180,8 +180,14 @@ both on a distro, and all outputs and counters match except live state
 (memory, clocks, Docker images). The prompts and tools match `-PromptOut`
 exactly. An end-to-end run with the local model on Ubuntu 24.04 saved a
 format-clean draft, its result and transcript pass `schemas/validate.py`,
-and the transcript replays identically. Still to do: the `engine` field in
-the eval worker and the A/B campaign.
+and the transcript replays identically.
+
+The eval console now takes the engines per campaign (PowerShell, Go or
+both; a job per engine, model and run), probe jobs and scored rows carry
+`engine` (rows without it are `ps`), and Analysis can compare by model and
+engine. The worker passes the job's engine to `Invoke-ProbeEval.ps1
+-Engine`, which builds the Go probe from the checkout once per commit (or
+uses `IZ_GO_EXE`). Still to do: the A/B campaign.
 
 ### 4. Native targets (about 2 weeks)
 

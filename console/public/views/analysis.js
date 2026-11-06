@@ -61,7 +61,7 @@ UI.register('analysis', (() => {
         <div><label class="lbl">Campaign</label><select id="a-cmp" class="inp"><option value="">any</option></select></div>
         <div><label class="lbl">Environment</label><select id="a-env" class="inp"><option value="">any</option><option value="wsl">wsl</option><option value="local">local</option></select></div>
         <label class="flex items-center gap-1 text-sm pb-1" title="Runs with lesson-set guidance on repos the lessons were drafted from measure memorization, not generalization"><input id="a-tuned" type="checkbox" checked> exclude repos the guidance was tuned on</label>
-        <div><label class="lbl">Compare by</label><select id="a-group" class="inp"><option value="model">model</option><option value="model_prompt">model + prompt version</option><option value="prompt">prompt version</option></select></div>
+        <div><label class="lbl">Compare by</label><select id="a-group" class="inp"><option value="model">model</option><option value="model_prompt">model + prompt version</option><option value="prompt">prompt version</option><option value="model_engine">model + engine</option></select></div>
         <div class="flex-1 min-w-[300px]"><label class="lbl">Include</label><div id="a-groups" class="flex flex-wrap gap-x-3 gap-y-1 text-sm"></div></div>
       </div>
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -115,7 +115,13 @@ UI.register('analysis', (() => {
     buildGroupPicker(); render();
   }
 
-  const groupOf = r => { const g = document.getElementById('a-group').value; return g === 'prompt' ? (r.prompt_version || '?') : g === 'model_prompt' ? `${UI.shortModel(r.model)} · ${r.prompt_version || '?'}` : UI.shortModel(r.model); };
+  const groupOf = r => {
+    const g = document.getElementById('a-group').value;
+    if (g === 'prompt') return r.prompt_version || '?';
+    if (g === 'model_prompt') return `${UI.shortModel(r.model)} · ${r.prompt_version || '?'}`;
+    if (g === 'model_engine') return `${UI.shortModel(r.model)} · ${r.engine || 'ps'}`;
+    return UI.shortModel(r.model);
+  };
   function buildGroupPicker() {
     const counts = {}; rows.forEach(r => { const g = groupOf(r); counts[g] = (counts[g] || 0) + 1; });
     const prev = new Set([...document.querySelectorAll('#a-groups input:not(:checked)')].map(i => i.value));

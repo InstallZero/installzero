@@ -53,6 +53,8 @@ const arr = v => v == null ? [] : Array.isArray(v) ? v : [v];
 const ACTIVE = ['claimed', 'running'];
 const PROBE_CAUSES = ['not_explored', 'out_of_budget', 'found_not_written'], BENCH_CAUSES = ['written_unmatched', 'not_observable'];
 const NO_DISTRO = ['draft', 'diagnose', 'lessons', 'sft-build', 'train'];
+// Probe engines: ps is Probe.ps1, go the Go port (installzero probe).
+const ENGINES = ['ps', 'go'];
 
 const clip = (s, n) => { s = s == null ? '' : typeof s === 'string' ? s : JSON.stringify(s); return s.length > n ? `${s.slice(0, n)} ...[${s.length - n} more chars]` : s; };
 // AgentLoop.ps1 transcript (JSON lines) -> compact events. Two 'start'
@@ -334,6 +336,9 @@ app.post('/api/campaigns', wrap(async (req, res) => {
   if (!d) return res.status(400).json({ error: 'pick a dataset' });
   const models = (b.models || []).filter(Boolean), runs = Math.max(1, Number(b.runs || 1));
   if (!models.length) return res.status(400).json({ error: 'pick at least one model' });
+  const engines = [...new Set(arr(b.engines).filter(Boolean))];
+  if (!engines.length) engines.push('ps');
+  if (engines.some(e => !ENGINES.includes(e))) return res.status(400).json({ error: `engines are ${ENGINES.join(' and ')}` });
   const list = await repos().find({ _id: { $in: d.repos } }).toArray();
   const ok = list.filter(r => r.snapshot && r.snapshot.status === 'ready' && (r.facts || []).length && r.recipe);
   const skipped = d.repos.filter(id => !ok.find(r => r._id === id));
@@ -343,12 +348,12 @@ app.post('/api/campaigns', wrap(async (req, res) => {
     if (!L || L.status !== 'active') return res.status(400).json({ error: 'guidance must be an active lesson set' });
   }
   const id = newId('cmp');
-  const c = { _id: id, name: b.name || `${d.name} - ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`, dataset: d._id, models, runs,
+  const c = { _id: id, name: b.name || `${d.name} - ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`, dataset: d._id, models, engines, runs,
     priority: Number(b.priority || 0), max_turns: Number(b.max_turns || 40), skipped, guidance: L ? L._id : null,
     diagnose: !!b.diagnose, diagnose_model: b.diagnose_model || HOSTED_MODELS[0], created_at: now() };
   await campaigns().insertOne(c);
   const docs = [];
-  for (const r of ok) for (const m of models) for (let i = 1; i <= runs; i++) docs.push(newJob('probe', r, { model: m, campaign: id, dataset: d._id, run: i, priority: c.priority, max_turns: c.max_turns, guidance: c.guidance }));
+  for (const r of ok) for (const m of models) for (const e of engines) for (let i = 1; i <= runs; i++) docs.push(newJob('probe', r, { model: m, engine: e, campaign: id, dataset: d._id, run: i, priority: c.priority, max_turns: c.max_turns, guidance: c.guidance }));
   if (docs.length) await jobs().insertMany(docs);
   await saveModels(models, 'campaign', id);
   const tuned = L ? ok.filter(r => (L.source.repos || []).includes(r.bench_id)).length : 0;
@@ -372,7 +377,8 @@ app.post('/api/jobs', wrap(async (req, res) => {
   const dup = await jobs().findOne({ repo: r._id, type: b.type, status: { $in: ['queued', ...ACTIVE] }, ...(b.type === 'probe' ? { model: b.model } : {}) });
   if (dup && b.type !== 'probe') return res.status(400).json({ error: `a ${b.type} job for this repo is already ${dup.status}` });
   const extra = { priority: Number(b.priority || 0) };
-  if (b.type === 'probe') Object.assign(extra, { model: b.model, max_turns: Number(b.max_turns || 40), run: 1 });
+  if (b.type === 'probe' && b.engine && !ENGINES.includes(b.engine)) return res.status(400).json({ error: `engine is ${ENGINES.join(' or ')}` });
+  if (b.type === 'probe') Object.assign(extra, { model: b.model, engine: b.engine || 'ps', max_turns: Number(b.max_turns || 40), run: 1 });
   if (b.type === 'draft') Object.assign(extra, { model: b.model || HOSTED_MODELS[0], feedback: b.feedback || '' });
   const j = newJob(b.type, r, extra);
   await jobs().insertOne(j);
@@ -727,6 +733,8 @@ async function resultQuery(p) {
   if (p.campaign) q.campaign = p.campaign;
   if (p.models) q.model = { $in: Array.isArray(p.models) ? p.models : String(p.models).split(',') };
   if (p.prompt_version) q.prompt_version = p.prompt_version;
+  // Rows from before the Go engine have no engine: they are ps.
+  if (p.engine) q.engine = p.engine === 'ps' ? { $in: [null, 'ps'] } : p.engine;
   if (p.dataset) { const d = await datasets().findOne({ _id: p.dataset }); if (d) q.repo = { $in: await benchIdsOf(d.repos) }; }
   if (p.target_env === 'wsl') q.target_env = /^wsl/;
   else if (p.target_env) q.target_env = p.target_env;
