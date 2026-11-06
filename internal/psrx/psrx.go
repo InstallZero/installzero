@@ -48,6 +48,24 @@ func (r *Regexp) Groups(s string) []string {
 	return out
 }
 
+// AllGroups returns the groups of every match ([regex]::Matches).
+func (r *Regexp) AllGroups(s string) [][]string {
+	var out [][]string
+	m, err := r.re.FindStringMatch(s)
+	for err == nil && m != nil {
+		gs := m.Groups()
+		g := make([]string, len(gs))
+		for i := range gs {
+			if len(gs[i].Captures) > 0 {
+				g[i] = gs[i].String()
+			}
+		}
+		out = append(out, g)
+		m, err = r.re.FindNextMatch(m)
+	}
+	return out
+}
+
 // Index returns the rune offsets of the first match, or -1, -1.
 func (r *Regexp) Index(s string) (start, end int) {
 	m, err := r.re.FindStringMatch(s)

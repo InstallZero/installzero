@@ -1,0 +1,4 @@
+{"system":"You are the InstallZero probe in a scripted test of the loop: finish-in-text (you have 10 turns).","user":"Probe this machine.","model":"scripted","type":"start"}
+{"content":"Let me think.","reasoning":"","usage":{"prompt_tokens":3000,"completion_tokens":40},"tool_calls":[],"type":"assistant"}
+{"content":"Here is my answer: {\"summary\": \"installed\", \"status\": \"ok\"} and that is all.","reasoning":"","usage":{"prompt_tokens":3000,"completion_tokens":40},"tool_calls":[],"type":"assistant"}
+{"type":"result","run":{"steps":2,"tool_calls":0,"invalid_calls":0,"repeats":0,"blocked":0,"loops_stopped":0,"nudges":1,"server_errors":0,"prompt_tokens":6000,"completion_tokens":80,"finished":true,"stop_reason":"finished","error":"","seconds":0,"last_long_text":"","Finish":{"summary":"installed","status":"ok"}}}

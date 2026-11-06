@@ -1,0 +1,14 @@
+{"system":"You are the InstallZero probe in a scripted test of the loop: loops-fail (you have 6 turns).","user":"Probe this machine.","model":"scripted","type":"start"}
+{"error":"the reply started repeating itself (\"- name: x - name: x\" over and over) and was stopped","type":"loop_stopped","temperature":0.2}
+{"error":"the reply started repeating itself (\"- name: x - name: x\" over and over) and was stopped","type":"loop_stopped","temperature":0.6}
+{"error":"the reply started repeating itself (\"- name: x - name: x\" over and over) and was stopped","type":"loop_stopped","temperature":0.9}
+{"error":"the reply started repeating itself (\"- name: x - name: x\" over and over) and was stopped","type":"loop_stopped","temperature":0.9}
+{"error":"the reply started repeating itself (\"- name: x - name: x\" over and over) and was stopped","type":"loop_stopped","temperature":0.2}
+{"error":"the reply started repeating itself (\"- name: x - name: x\" over and over) and was stopped","type":"loop_stopped","temperature":0.6}
+{"error":"the reply started repeating itself (\"- name: x - name: x\" over and over) and was stopped","type":"loop_stopped","temperature":0.9}
+{"error":"the reply started repeating itself (\"- name: x - name: x\" over and over) and was stopped","type":"loop_stopped","temperature":0.9}
+{"error":"the reply started repeating itself (\"- name: x - name: x\" over and over) and was stopped","type":"loop_stopped","temperature":0.2}
+{"error":"the reply started repeating itself (\"- name: x - name: x\" over and over) and was stopped","type":"loop_stopped","temperature":0.6}
+{"error":"the reply started repeating itself (\"- name: x - name: x\" over and over) and was stopped","type":"loop_stopped","temperature":0.9}
+{"error":"the reply started repeating itself (\"- name: x - name: x\" over and over) and was stopped","type":"loop_stopped","temperature":0.9}
+{"type":"result","run":{"steps":2,"tool_calls":0,"invalid_calls":0,"repeats":0,"blocked":0,"loops_stopped":12,"nudges":0,"server_errors":0,"prompt_tokens":0,"completion_tokens":0,"finished":false,"stop_reason":"model-errors","error":"the model failed to produce a usable reply four times in a row; last error: the reply started repeating itself (\"- name: x - name: x\" over and over) and was stopped","seconds":0,"last_long_text":"","Finish":null}}

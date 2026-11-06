@@ -23,12 +23,16 @@ $root = Split-Path $PSScriptRoot
 . (Join-Path $root 'doctor\Tools.ps1')
 . (Join-Path $root 'agent\InstallMd.ps1')
 . (Join-Path $root 'agent\LinuxTarget.ps1')
+. (Join-Path $root 'agent\AgentLoop.ps1')
 
 # Protect-Secrets reads the machine's secret values through this; fixtures give them per case.
 $script:FixtureSecretValues = @()
 function Get-SecretValues { $script:FixtureSecretValues }
 
 function Join-Text($t) { if ($t -is [array]) { -join $t } else { [string]$t } }
+
+# $Length characters of "text <n> " repeated: message bodies for the loop's trimming.
+function New-FixtureText([int]$N, [int]$Length) { ("text $N " * ([math]::Ceiling($Length / 6) + 1)).Substring(0, $Length) }
 
 function ConvertTo-FixtureJson($v) {
     if ($null -eq $v) { return 'null' }
@@ -93,6 +97,25 @@ $files = @(
     @('loops\repeat.json', @('text'), { param($c) [ordered]@{ unit = Find-RepeatLoop $c.text } }),
     @('loops\template.json', @('text'), { param($c) [ordered]@{ line = Find-TemplateLoop $c.text } }),
     @('loops\salvage.json', @('partial'), { param($c) [ordered]@{ content = Get-LoopSalvage $c.partial } }),
+    @('loops\compress.json', @('messages', 'max_chars', 'keep'), {
+        param($c)
+        $i = 0
+        $ms = @(foreach ($m in $c.messages) {
+            $i++
+            $h = @{ role = $m.role; content = $(if ($null -eq $m.content) { $null } else { New-FixtureText $i $m.content }) }
+            if ($m.args) { $j = 0; $h.tool_calls = @(foreach ($n in $m.args) { $j++; @{ id = "c$i-$j"; type = 'function'; function = @{ name = 'x'; arguments = (New-FixtureText ($i * 10 + $j) $n) } } }) }
+            $h
+        })
+        $before = @($ms | ForEach-Object { [ordered]@{ content = $_.content; args = @($_.tool_calls | Where-Object { $_ } | ForEach-Object { $_.function.arguments }) } })
+        Compress-AgentMessages $ms $c.max_chars $c.keep
+        $k = 0
+        [ordered]@{ changed = @(foreach ($m in $ms) {
+            $b = $before[$k]; $k++
+            $args = @($m.tool_calls | Where-Object { $_ } | ForEach-Object { $_.function.arguments })
+            $argsChanged = @(for ($x = 0; $x -lt $args.Count; $x++) { if ($args[$x] -cne $b.args[$x]) { $args[$x] } else { $null } })
+            if ($m.content -cne $b.content -or @($argsChanged | Where-Object { $_ }).Count) { [ordered]@{ index = $k - 1; content = $(if ($m.content -cne $b.content) { $m.content } else { $null }); args = $argsChanged } }
+        }) }
+    }),
     @('installmd\docs.json', @('file'), {
         param($c)
         $d = Read-FixtureDoc $c.file

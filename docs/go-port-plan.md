@@ -133,6 +133,22 @@ Windows PowerShell, because the check walks PowerShell's own syntax tree.
   transcript. Running a recorded run through the Go loop has to produce the
   same tool calls and the same tool outputs as the original.
 
+In progress. Done: the chat client (`internal/llm`: plain and streamed chat
+with loop stopping, the Responses API, hosted providers and their keys) and
+the loop (`internal/agentloop`). The replay runs inside the test rather than
+as a server: the recorded replies and errors stand in for the model, the
+recorded outputs for the tools, and every event the Go loop writes must
+equal the recorded one, through to the run's counters and stop reason.
+`fixtures/transcripts/New-LoopScenarios.ps1` records scripted runs of the
+PowerShell loop for the paths real runs rarely take (server errors,
+unparseable replies, calls written as text, idle replies, duplicate and
+excess calls, the budget running out, looping replies, a hosted model); the
+Go loop replays all of them identically, and every probe run on the eval host
+since the loop took its current form (31, `IZ_REPLAY_DIR`). Trimming, which
+only changes what is sent, has its own fixture (`loops/compress.json`).
+Left: per-model settings (`.iz.json`), `hf:` servers, and the llama-server
+lifecycle.
+
 ### 3. Probe on WSL, then the A/B check (about 1-2 weeks)
 
 - `target/wsl` and `probe`, with the same command-line options as
@@ -195,4 +211,5 @@ can phases 4 and 5.
    support?
 3. Should the Go engine keep the per-turn model settings exactly as now
    (temperature schedule 0.2, 0.6, 0.9, 0.9; 8,192-token replies) or is
-   phase 3 the time to revisit them?
+   phase 3 the time to revisit them? Decided: keep them as they are; the
+   A/B check compares engines on the same settings.

@@ -1,0 +1,13 @@
+{"system":"You are the InstallZero probe in a scripted test of the loop: budget (you have 3 turns).","user":"Probe this machine.","model":"scripted","type":"start"}
+{"content":"","reasoning":"","usage":{"prompt_tokens":3000,"completion_tokens":40},"tool_calls":{"id":"call-47","type":"function","function":{"name":"list_dir","arguments":"{\"path\":\"/a\",\"purpose\":\"look at /a\"}"}},"type":"assistant"}
+{"output":"listing of /a\n[exit 0]","arguments":"{\"path\":\"/a\",\"purpose\":\"look at /a\"}","name":"list_dir","type":"tool"}
+{"content":"","reasoning":"","usage":{"prompt_tokens":3000,"completion_tokens":40},"tool_calls":{"id":"call-48","type":"function","function":{"name":"list_dir","arguments":"{\"path\":\"/b\",\"purpose\":\"look at /b\"}"}},"type":"assistant"}
+{"output":"listing of /b\n[exit 0]","arguments":"{\"path\":\"/b\",\"purpose\":\"look at /b\"}","name":"list_dir","type":"tool"}
+{"content":"","reasoning":"","usage":{"prompt_tokens":3000,"completion_tokens":40},"tool_calls":{"id":"call-49","type":"function","function":{"name":"list_dir","arguments":"{\"path\":\"/c\",\"purpose\":\"look at /c\"}"}},"type":"assistant"}
+{"output":"listing of /c\n[exit 0]","arguments":"{\"path\":\"/c\",\"purpose\":\"look at /c\"}","name":"list_dir","type":"tool"}
+{"content":"","reasoning":"","usage":{"prompt_tokens":3000,"completion_tokens":40},"tool_calls":{"id":"call-50","type":"function","function":{"name":"list_dir","arguments":"{\"path\":\"/d\",\"purpose\":\"look at /d\"}"}},"type":"assistant"}
+{"output":"not run: the budget is spent; only write_install_md and finish are available now.","arguments":"{\"path\":\"/d\",\"purpose\":\"look at /d\"}","name":"list_dir","type":"tool"}
+{"content":"No calls this time.","reasoning":"","usage":{"prompt_tokens":3000,"completion_tokens":40},"tool_calls":[],"type":"assistant"}
+{"content":"","reasoning":"","usage":{"prompt_tokens":3000,"completion_tokens":40},"tool_calls":{"id":"call-51","type":"function","function":{"name":"list_dir","arguments":"{\"path\":\"/e\",\"purpose\":\"look at /e\"}"}},"type":"assistant"}
+{"output":"not run: the budget is spent; only write_install_md and finish are available now.","arguments":"{\"path\":\"/e\",\"purpose\":\"look at /e\"}","name":"list_dir","type":"tool"}
+{"type":"result","run":{"steps":6,"tool_calls":5,"invalid_calls":0,"repeats":0,"blocked":0,"loops_stopped":0,"nudges":4,"server_errors":0,"prompt_tokens":18000,"completion_tokens":240,"finished":false,"stop_reason":"budget","error":"","seconds":0,"last_long_text":"","Finish":null}}

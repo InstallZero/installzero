@@ -1,0 +1,4 @@
+{"system":"You are the InstallZero probe in a scripted test of the loop: fatal-error (you have 8 turns).","user":"Probe this machine.","model":"scripted","type":"start"}
+{"content":"","reasoning":"","usage":{"prompt_tokens":3000,"completion_tokens":40},"tool_calls":{"id":"call-5","type":"function","function":{"name":"list_dir","arguments":"{\"path\":\"/opt\",\"purpose\":\"look at /opt\"}"}},"type":"assistant"}
+{"output":"listing of /opt\n[exit 0]","arguments":"{\"path\":\"/opt\",\"purpose\":\"look at /opt\"}","name":"list_dir","type":"tool"}
+{"type":"result","run":{"steps":1,"tool_calls":1,"invalid_calls":0,"repeats":0,"blocked":0,"loops_stopped":0,"nudges":0,"server_errors":0,"prompt_tokens":3000,"completion_tokens":40,"finished":false,"stop_reason":"","error":"The remote server returned an error: (401) Unauthorized.","seconds":0,"last_long_text":"","Finish":null}}
