@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Build an install-bench snapshot: a WSL distro with one project installed
     and running, its install files removed, exported as a tar.
@@ -15,10 +15,13 @@
     3. Copies the install files to <Root>\snapshots\<id>.hidden (the probe's
        content guard fingerprints them), then deletes them in the distro,
        with shell history, apt and dpkg logs, and package caches.
-    4. Exports <Root>\snapshots\<id>.tar and unregisters the build distro
-       (-Keep leaves it). <id>.meta.json records the TCP ports the install
+    4. Exports <Root>\snapshots\<id>.tar and unregisters the build distro,
+       also when the build fails (-Keep leaves it either way; the failure's
+       log is in <id>.build.log). <id>.meta.json records the TCP ports the install
        listens on beyond a bare Ubuntu: WSL distros share one network, so
        the eval scheduler never runs two snapshots with a port in common.
+       For the same reason, firewall rules the recipe turns on are cleared
+       before the distro stops (Reset-WslFirewall), even when it fails.
 
 .EXAMPLE
     .\Build-WslSnapshot.ps1 -Project harbor
@@ -63,6 +66,15 @@ if ((Get-WslNames) -contains $distro) { Write-Step "Removing the previous $distr
 
 Write-Step "Importing $distro"
 $dir = Join-Path $Root "distros\$distro"
+# A failed build's log is in <id>.build.log, and a rebuild starts from a fresh
+# distro, so only -Keep leaves a failed one behind.
+function Remove-BuildDistro {
+    if ($Keep) { Write-Step "kept $distro (remove: wsl --unregister $distro)"; return }
+    wsl.exe --terminate $distro 2>&1 | Out-Null
+    wsl.exe --unregister $distro 2>&1 | Out-Null
+    Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue
+}
+$prepared = $false
 New-Item -ItemType Directory -Force $dir | Out-Null
 wsl.exe --import $distro $dir $rootfs --version 2 | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "wsl --import failed ($LASTEXITCODE)" }
@@ -82,7 +94,7 @@ generateHosts=false
 default=root
 EOF
 '@
-if ($seal.Code) { throw "sealing the distro failed: $($seal.Out)" }
+if ($seal.Code) { Remove-BuildDistro; throw "sealing the distro failed: $($seal.Out)" }
 wsl.exe --terminate $distro | Out-Null
 $up = Invoke-WslBash $distro 'for i in $(seq 1 30); do s=$(systemctl is-system-running 2>/dev/null); case "$s" in running|degraded) echo $s; exit 0;; esac; sleep 2; done; echo "systemd: $s"; exit 1' 90
 Write-Step "systemd: $($up.Out)"
@@ -90,19 +102,38 @@ $usesDocker = $recipe -match '\bdocker\b'
 if ($usesDocker) { Clear-WslDockerNet $distro | Out-Null }
 $basePorts = Get-ListenPorts $distro
 
+# Why a service is down, for whoever fixes the recipe: a failed health
+# check alone does not say.
+function Get-BuildDiagnostics {
+    $d = Invoke-WslBash $distro @'
+echo '== failed units'; systemctl --failed --no-legend --plain 2>&1 | head -20
+for u in $(systemctl --failed --no-legend --plain 2>/dev/null | awk '{print $1}' | head -3); do echo "== journal $u"; journalctl -u "$u" -n 25 --no-pager 2>&1 | cut -c1-300; done
+if command -v docker >/dev/null 2>&1; then
+  echo '== containers'; docker ps -a --format '{{.Names}}  {{.Image}}  {{.Status}}' 2>&1 | head -25
+  for c in $(docker ps -a --filter status=exited --filter status=restarting --format '{{.Names}}' 2>/dev/null | head -4); do echo "== logs $c"; docker logs --tail 25 "$c" 2>&1 | cut -c1-300; done
+fi
+echo '== listening'; ss -ltnp 2>/dev/null | awk 'NR>1 {print $4, $6}' | cut -c1-160 | head -25
+echo '== recent errors'; journalctl -p err -n 20 --no-pager 2>&1 | cut -c1-300
+true
+'@ 120
+    $t = "$($d.Out)"
+    if ($t.Length -gt 6000) { $t = $t.Substring(0, 6000) + "`n[... truncated]" }
+    "`n--- diagnostics at failure ---`n$t"
+}
+
 # Keep the distro running while the recipe and the export prepare.
 $keepAlive = Start-Process wsl.exe -ArgumentList "-d $distro -u root -- sleep infinity" -WindowStyle Hidden -PassThru
 try {
     Write-Step "Running the $Project recipe (log: $log)"
     # Also written as it runs, to tail from Windows:
     # Get-Content \\wsl.localhost\<distro>\root\bench-recipe.log -Wait
-    $r = Invoke-WslBash $distro ("exec > >(tee /root/bench-recipe.log) 2>&1`n" + $recipe) 3600
+    $r = Invoke-WslBash $distro ($WslCurlTimeout + "exec > >(tee /root/bench-recipe.log) 2>&1`n" + $recipe) 3600
     Set-Content $log $r.Out -Encoding utf8
-    if ($r.Code) { throw "the recipe failed (exit $($r.Code)); see $log`n$(($r.Out -split "`n" | Select-Object -Last 15) -join "`n")" }
+    if ($r.Code) { throw "the recipe failed (exit $($r.Code)); see $log`n$(($r.Out -split "`n" | Select-Object -Last 15) -join "`n")$(Get-BuildDiagnostics)" }
 
     Write-Step "Waiting for readiness: $($def.ready)"
-    $ready = Invoke-WslBash $distro "for i in `$(seq 1 $([math]::Ceiling($def.ready_timeout_sec / 5))); do ($($def.ready)) && exit 0; sleep 5; done; exit 1" ($def.ready_timeout_sec + 30)
-    if ($ready.Code) { throw "not ready after $($def.ready_timeout_sec)s: $($ready.Out)" }
+    $ready = Invoke-WslBash $distro "$($WslCurlTimeout)for i in `$(seq 1 $([math]::Ceiling($def.ready_timeout_sec / 5))); do ($($def.ready)) && exit 0; sleep 5; done; exit 1" ($def.ready_timeout_sec + 30)
+    if ($ready.Code) { throw "not ready after $($def.ready_timeout_sec)s: $($ready.Out)$(Get-BuildDiagnostics)" }
     $ports = @(Get-ListenPorts $distro | Where-Object { $_ -notin $basePorts })
     Write-Step "Listening ports: $($ports -join ' ')"
 
@@ -127,8 +158,11 @@ true
 "@
     if ($clean.Code) { throw "cleanup failed: $($clean.Out)" }
     if ($usesDocker) { Clear-WslDockerNet $distro | Out-Null }
+    $prepared = $true
 } finally {
+    Reset-WslFirewall $distro | Out-Null
     if ($keepAlive -and -not $keepAlive.HasExited) { Stop-Process -Id $keepAlive.Id -Force -ErrorAction SilentlyContinue }
+    if (-not $prepared) { Remove-BuildDistro }
 }
 
 Write-Step "Exporting $snapshot"

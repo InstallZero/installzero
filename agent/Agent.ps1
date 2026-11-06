@@ -44,6 +44,8 @@ param(
     [int]$CommandTimeoutMinutes = 60,
     [string]$ResultFile = '',
     [switch]$DryRun,
+    # Write the system prompt, first user message and tools as JSON and stop.
+    [string]$PromptOut = '',
     [switch]$Quiet
 )
 
@@ -134,19 +136,11 @@ function Invoke-TieredCommand([string]$Code, [string]$Shell, [string]$Origin, [s
 }
 
 $tools = @($script:DoctorToolSchemas | Where-Object { $_.function.name -ne 'finish' })
-$tools += @{ type = 'function'; function = @{ name = 'run_change'; description = 'Run a PowerShell (or bash) command that changes something: installs, clones, builds, starts services, writes files. It is classified first: install-folder changes run, machine-wide ones need the user''s Y, destructive ones are refused. Returns the exit code and output.'; parameters = @{ type = 'object'; properties = @{
-    command = @{ type = 'string' }; shell = @{ type = 'string'; enum = @('powershell', 'bash'); description = 'default powershell' }
-    timeout_minutes = @{ type = 'integer'; description = "default 20, max $CommandTimeoutMinutes" } }; required = @('command') } } }
-$tools += @{ type = 'function'; function = @{ name = 'finish'; description = 'End the install: call when every step is done, or when you are blocked and need the user.'; parameters = @{ type = 'object'; properties = @{
-    status = @{ type = 'string'; enum = @('installed', 'partial', 'failed') }
-    summary = @{ type = 'string'; description = 'What was installed and how to use it (URLs, commands to start it).' }
-    blocked_on = @{ type = 'string'; description = 'What the user must do, when not fully installed.' } }; required = @('status', 'summary') } } }
+$tools += Get-PromptTool 'agent/run_change' @{ command_timeout_minutes = $CommandTimeoutMinutes }
+$tools += Get-PromptTool 'agent/finish'
 if ($structured) {
     $stepIds = @($plans | ForEach-Object { $_.Step.Id })
-    $tools += @{ type = 'function'; function = @{ name = 'run_step'; description = 'Run the detect, install or verify block of a step from install.md, as chosen for this machine. Returns the exit code and output.'; parameters = @{ type = 'object'; properties = @{
-        step = @{ type = 'string'; enum = $stepIds }; block = @{ type = 'string'; enum = @('detect', 'install', 'verify') } }; required = @('step', 'block') } } }
-    $tools += @{ type = 'function'; function = @{ name = 'step_result'; description = 'Record the outcome of a step once its verify passed, it was already done, or it cannot be done.'; parameters = @{ type = 'object'; properties = @{
-        step = @{ type = 'string'; enum = $stepIds }; status = @{ type = 'string'; enum = @('done', 'already-done', 'skipped', 'failed') }; evidence = @{ type = 'string' } }; required = @('step', 'status', 'evidence') } } }
+    foreach ($k in 'run_step', 'step_result') { $tools += Get-PromptTool "agent/$k" @{ step_ids = $stepIds } }
 }
 
 $dispatch = {
@@ -187,27 +181,12 @@ $planText = if ($structured) {
     }) -join "`n`n"
 } else { $doc.Text }
 
-$system = @"
-You are the InstallZero install agent. You install the project described below on this machine, adapting to it, and you are also an install doctor: when something fails you find the root cause with your read-only tools (system_facts, gpu_drivers, read_file, list_dir, grep, run_command, compose_ps, service_logs) and fix it.
-
-This machine: $machineText.
-Install folder: $InstallDir (the project's repo goes in $repoDir). Use absolute paths inside it.
-
-How to work:
-$(if ($structured) { @'
-- Follow the steps in order. For each applicable step: run_step detect; exit 0 means it is already done (step_result already-done). Otherwise run_step install, then run_step verify. When verify passes, step_result done.
-- When a block fails, read its output, investigate, and fix with run_change (or adapt the command to this machine), then verify again. After three failed attempts on one step, record it failed and decide whether later steps can still run.
-'@ } else { @'
-- The document is plain instructions. Work out the steps for this machine, then do them with run_change, checking each worked (a command that exits 0 and shows the expected version, file, port or page) before moving on.
-'@ })
-- Commands run in a fresh PowerShell each time (no state between calls): use absolute paths and full venv paths (e.g. $repoDir\.venv\Scripts\python.exe).
-- Commands that change the machine outside the install folder (winget, WSL, services, global installs) need the user's Y. Ask only when the step needs it; if the user refuses, do not ask again for the same thing.
-- Long-running servers must not block you: start them with run_change using Start-Process -FilePath <program inside the install folder> -WindowStyle Minimized, or docker compose up -d, then check the port or URL.
-- Never put secret values in commands you show; if a token is needed, stop and say in finish which variable the user must set.
-- Call finish when everything is installed and verified, or when you are blocked.
-"@
-
-$user = if ($structured) { "Install $name. The steps, with the blocks chosen for this machine and each block's safety tier:`n`n$planText" } else { "Install $name by following these instructions:`n`n$planText" }
+$system = Get-Prompt 'agent' @{ machine = $machineText; install_dir = $InstallDir; repo_dir = $repoDir; structured = $structured }
+$user = Get-PromptMessage $(if ($structured) { 'agent_user_steps' } else { 'agent_user_plain' }) @{ name = $name; plan = $planText }
+if ($PromptOut) {
+    [IO.File]::WriteAllText([IO.Path]::GetFullPath($PromptOut), (ConvertTo-Json ([ordered]@{ system = $system; user = $user; tools = @($tools) }) -Depth 20), [Text.UTF8Encoding]::new($false))
+    return
+}
 
 # ---- run ----------------------------------------------------------------------
 

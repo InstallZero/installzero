@@ -19,6 +19,10 @@
       measure  restore the snapshot, wait until ready, record the listening
              ports in <id>.meta.json (snapshots built before ports were
              recorded), delete the distro.
+      sft-build  sft\Export-SftDataset.ps1 into
+             %LOCALAPPDATA%\installzero\sft\sets\<set id>. Outcome: its manifest.
+      train  sft\Invoke-SftTrain.ps1: LoRA fine-tune, GGUF into the doctor
+             assets. Outcome: the model file, size and losses.
     Lines starting with "PHASE: " are progress for the console.
 #>
 param(
@@ -89,10 +93,11 @@ try {
                     wsl.exe --terminate $distro | Out-Null
                     $keepAlive = Start-Process wsl.exe -ArgumentList "-d $distro -u root -- sleep infinity" -WindowStyle Hidden -PassThru
                 }
+                Reset-WslFirewall $distro | Out-Null
                 Write-Phase 'starting' 'waiting for the readiness check'
                 $t0 = Get-Date
                 $r = $spec.recipe
-                $ready = Invoke-WslBash $distro "for i in `$(seq 1 $([math]::Ceiling($r.ready_timeout_sec / 5))); do ($($r.ready)) && exit 0; sleep 5; done; exit 1" ($r.ready_timeout_sec + 30)
+                $ready = Invoke-WslBash $distro "$($WslCurlTimeout)for i in `$(seq 1 $([math]::Ceiling($r.ready_timeout_sec / 5))); do ($($r.ready)) && exit 0; sleep 5; done; exit 1" ($r.ready_timeout_sec + 30)
                 if ($ready.Code) { throw "not ready after $($r.ready_timeout_sec)s: $($ready.Out)" }
                 $ports = @(Get-ListenPorts $distro | Where-Object { $_ -notin $basePorts })
                 if (-not $meta -or -not @($meta.ports).Count) {
@@ -117,7 +122,7 @@ try {
                     [IO.File]::WriteAllText($evalArgs.GuidanceFile, (@{ id = $spec.guidance.id; text = $spec.guidance.text } | ConvertTo-Json), $utf8)
                 }
                 $model = [string]$job.model
-                if ($model -match '^(anthropic|openai|xai|google):') { $evalArgs.Remote = $model } else { $evalArgs.Model = ($model -replace '^local:', '') }
+                if ($model -match '^(anthropic|openai|xai|google|hf):') { $evalArgs.Remote = $model } else { $evalArgs.Model = ($model -replace '^local:', '') }
                 & (Join-Path $evalDir 'Invoke-ProbeEval.ps1') @evalArgs
                 if (-not (Test-Path $rowFile)) { throw 'the probe finished without a scored row' }
                 $row = Get-Content $rowFile -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -126,6 +131,7 @@ try {
                 $transcript = if ($row.transcript -and (Test-Path $row.transcript)) { [IO.File]::ReadAllText($row.transcript) } else { '' }
                 Save-Outcome @{ status = 'done'; result = $row; ports = $ports; transcript = $transcript }
             } finally {
+                Reset-WslFirewall $distro | Out-Null
                 if ($keepAlive -and -not $keepAlive.HasExited) { Stop-Process -Id $keepAlive.Id -Force -ErrorAction SilentlyContinue }
                 Write-Phase 'cleanup' "removing $distro"
                 if ($docker) { Clear-WslDockerNet $distro | Out-Null }
@@ -133,8 +139,10 @@ try {
                 Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue
             }
         }
-        'build' {
+        '^build$' {
             $projects = Write-ProjectFiles
+            # Named so the worker deletes it if the job is cancelled or killed.
+            Set-Content (Join-Path $work 'distro.txt') "bench-$bid-build"
             Write-Phase 'building' "recipe for $bid"
             try { & (Join-Path $evalDir 'wsl\Build-WslSnapshot.ps1') -Project $bid -ProjectsDir $projects -Root $Root }
             catch {
@@ -148,7 +156,7 @@ try {
             Write-Phase 'built' "$($meta.size_gb) GB, ports $(@($meta.ports) -join ' ')"
             Save-Outcome @{ status = 'done'; snapshot = @{ size_gb = $meta.size_gb; ports = @($meta.ports) } }
         }
-        'draft' {
+        '^draft$' {
             Write-Phase 'drafting' "with $($job.model)"
             $out = Join-Path $work 'draft.json'
             & (Join-Path $PSScriptRoot 'Invoke-RecipeDraft.ps1') -JobFile $JobFile -Out $out
@@ -163,6 +171,18 @@ try {
             $o = [IO.File]::ReadAllText($out) | ConvertFrom-Json
             if ($job.type -eq 'diagnose') { Write-Phase 'diagnosed' "$(@($o.misses).Count) misses"; Save-Outcome @{ status = 'done'; diagnosis = $o } }
             else { Write-Phase 'drafted' "$(@($o.items).Count) lessons"; Save-Outcome @{ status = 'done'; lessons = $o } }
+        }
+        '^sft-build$' {
+            Write-Phase 'building' "SFT set $($spec.set_id)"
+            $out = Join-Path $work 'manifest.json'
+            & (Join-Path $evalDir 'sft\Export-SftDataset.ps1') -JobFile $JobFile -OutDir (Join-Path $env:LOCALAPPDATA "installzero\sft\sets\$($spec.set_id)") -Out $out
+            Save-Outcome @{ status = 'done'; sft = ([IO.File]::ReadAllText($out) | ConvertFrom-Json) }
+        }
+        '^train$' {
+            Write-Phase 'setup' "training run $($spec.run_id) on $($spec.base_model)"
+            $out = Join-Path $work 'trained.json'
+            & (Join-Path $evalDir 'sft\Invoke-SftTrain.ps1') -JobFile $JobFile -Out $out
+            Save-Outcome @{ status = 'done'; train = ([IO.File]::ReadAllText($out) | ConvertFrom-Json) }
         }
         default { throw "unknown job type '$($job.type)'" }
     }

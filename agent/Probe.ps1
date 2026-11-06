@@ -62,6 +62,12 @@ param(
     [int]$TimeoutMinutes = 30,
     [string]$ResultFile = '',
     [string]$GuidanceFile = '',
+    # Write the tool definitions offered to the model as JSON and stop (the
+    # SFT export pairs them with transcripts, which do not record them).
+    [string]$ToolsOut = '',
+    # Write the system prompt, first user message and tools as JSON and stop
+    # (the Go engine is checked against this).
+    [string]$PromptOut = '',
     [switch]$Quiet
 )
 
@@ -293,28 +299,13 @@ function Invoke-DraftCheck([string]$Content) {
 
 # ---- tools and prompt ----------------------------------------------------------
 
-if ($linux) {
-    $tools = @(
-        @{ type = 'function'; function = @{ name = 'run_command'; description = 'Run a read-only bash command on this Linux machine (as root) and return its exit code and output. Commands that could change anything are refused: use cat, ls, find, grep, ps, ss, systemctl status/list-*, journalctl, docker ps/inspect/logs/images, docker compose ls/ps/config, dpkg -l/-s/-L, apt policy/list, apt-mark showmanual, pip list, git status/log/remote, curl to localhost, and similar.'; parameters = @{ type = 'object'; properties = @{ command = @{ type = 'string' }; timeout_seconds = @{ type = 'integer'; description = 'default 60, max 180' } }; required = @('command') } } }
-        @{ type = 'function'; function = @{ name = 'read_file'; description = 'Read a text file on this Linux machine, with line numbers. Values of password, secret, token and key settings are masked.'; parameters = @{ type = 'object'; properties = @{ path = @{ type = 'string' }; start_line = @{ type = 'integer'; description = 'default 1' }; max_lines = @{ type = 'integer'; description = 'default 200, max 400' } }; required = @('path') } } }
-        @{ type = 'function'; function = @{ name = 'list_dir'; description = 'List a directory on this Linux machine (ls -la).'; parameters = @{ type = 'object'; properties = @{ path = @{ type = 'string' } }; required = @('path') } } }
-        @{ type = 'function'; function = @{ name = 'grep'; description = 'Search files under a path for an extended regex. Returns path:line: text.'; parameters = @{ type = 'object'; properties = @{ pattern = @{ type = 'string' }; path = @{ type = 'string'; description = 'file or directory, default the target' }; include = @{ type = 'string'; description = 'file name filter, e.g. *.yml' } }; required = @('pattern') } } }
-        @{ type = 'function'; function = @{ name = 'inventory'; description = $script:LinuxInventoryHelp; parameters = @{ type = 'object'; properties = @{
-            area = @{ type = 'string'; enum = $script:LinuxInventoryAreas }
-            filter = @{ type = 'string'; description = 'optional regex to narrow the lines' }; path = @{ type = 'string'; description = 'folder for python and git (default /)' } }; required = @('area') } } }
-    )
-} else {
-$tools = @($script:DoctorToolSchemas | Where-Object { $_.function.name -notin 'finish', 'compose_ps', 'service_logs' })
-$tools += @{ type = 'function'; function = @{ name = 'inventory'; description = 'Read-only inventory of one area of this machine. software: installed programs. containers: containers with compose project, working dir, compose files and images. processes: this session''s processes with command lines. ports: listening TCP ports with the owning program. python: interpreters, conda envs, venvs under path with their packages. node: node, npm and global packages. git: repos under path with remote, branch, commit. gpu: nvidia-smi, nvcc, CUDA_PATH. wsl: distros. env: environment variables (secrets masked) and PATH. startup: startup folder, Run key, scheduled tasks.'; parameters = @{ type = 'object'; properties = @{
-    area = @{ type = 'string'; enum = @('software', 'containers', 'processes', 'ports', 'python', 'node', 'git', 'gpu', 'wsl', 'env', 'startup') }
-    filter = @{ type = 'string'; description = 'optional regex to narrow the rows' }; path = @{ type = 'string'; description = 'folder for python and git (default the target)' } }; required = @('area') } } }
+$tools = if ($linux) { @('run_command', 'read_file', 'list_dir', 'grep', 'inventory' | ForEach-Object { Get-PromptTool "linux/$_" }) }
+         else { @($script:DoctorToolSchemas | Where-Object { $_.function.name -notin 'finish', 'compose_ps', 'service_logs' }) + @(Get-PromptTool 'windows/inventory') }
+$tools += @('test_check', 'write_install_md', 'finish' | ForEach-Object { Get-PromptTool "probe/$_" })
+if ($ToolsOut) {
+    [IO.File]::WriteAllText([IO.Path]::GetFullPath($ToolsOut), (ConvertTo-Json @($tools) -Depth 20), [Text.UTF8Encoding]::new($false))
+    return
 }
-$tools += @{ type = 'function'; function = @{ name = 'test_check'; description = 'Run a candidate detect or verify check here, where the project is installed, and return its exit code and output. Only read-only commands and version queries run.'; parameters = @{ type = 'object'; properties = @{ code = @{ type = 'string' } }; required = @('code') } } }
-$tools += @{ type = 'function'; function = @{ name = 'write_install_md'; description = 'Save the full install.md (replacing the previous draft). Returns format problems and the result of running every step''s detect and verify check here.'; parameters = @{ type = 'object'; properties = @{ content = @{ type = 'string' } }; required = @('content') } } }
-$tools += @{ type = 'function'; function = @{ name = 'finish'; description = 'End the probe after the last write_install_md.'; parameters = @{ type = 'object'; properties = @{
-    summary = @{ type = 'string'; description = 'What the project is and how the install.md installs it.' }
-    gaps = @{ type = 'string'; description = 'What could not be determined from this machine (versions guessed, manual steps, secrets the user must provide).' }
-    confidence = @{ type = 'string'; enum = @('high', 'medium', 'low') } }; required = @('summary', 'gaps', 'confidence') } } }
 
 function ConvertTo-BashQuoted([string]$s) { "'" + $s.Replace("'", "'\''") + "'" }
 function Invoke-LinuxProbeTool([string]$Name, $A, [string]$Code) {
@@ -385,30 +376,15 @@ $dispatch = {
 $spec = Get-Content (Join-Path $PSScriptRoot 'INSTALL-MD.md') -Raw
 $machine = if ($linux) { Get-WslMachineProfile $Wsl } else { Get-MachineProfile }
 $script:Machine = $machine
-$osWord = if ($linux) { 'Linux' } else { 'Windows' }
-$system = @"
-You are the InstallZero probe. A project is installed and running on this $osWord machine. Work backwards from what runs to the procedure that installed it, and write that procedure as an install.md another machine can replay with the InstallZero agent.
-
-This machine: $($machine.os_version), $($machine.arch), GPU $($machine.gpu)$(if ($machine.gpus) { " ($($machine.gpus))" })$(if ($machine.driver) { ", NVIDIA driver $($machine.driver)" }), $($machine.ram_gb) GB RAM.$(if ($linux) { ' You are root; tools run bash here. Write the install.md for this Linux machine: blocks are bash (```detect bash, ```install bash, ```verify bash).' })
-
-Method:
-1. Find the project and how it runs: start from the target, then inventory processes, ports and containers to find the entry point (the command line, compose project and its files, the port it serves).
-2. Work back to its dependencies: the checkout (git remote and commit) or downloaded release, runtimes and their versions (python venv and key packages such as torch with its CUDA build, node, docker images), system software ($(if ($linux) { 'apt packages and their repositories, Docker Engine and its plugins, systemd services, drivers, CUDA' } else { 'Docker Desktop, WSL, drivers, CUDA' })), data it downloaded (models, databases), configuration (config files and .env keys, never secret values; settings changed from their defaults), $(if ($linux) { 'system configuration (/etc/hosts, users and groups, sysctl), ' })startup entries.
-3. Order them as steps a clean machine needs: system prerequisites first, then the checkout, then environments and packages, then data and configuration, then starting it, then a final step whose verify proves it serves (port or URL).
-4. Write the install.md with write_install_md. Save a complete first draft by turn $([math]::Floor($MaxTurns / 2)) at the latest (you have $MaxTurns turns), then improve it. Every step needs a detect and a verify; on this machine both must pass, since the project is installed. Fix checks that fail and write again. Keep install blocks for a clean machine: pin the versions you observed, and add variants (os=, gpu=) only where this machine shows the need.
-5. Call finish with what you could not determine.
-
-Rules: everything is read-only. Use {{INSTALL_DIR}} and {{REPO_DIR}} for the install location, not this machine's paths. Never write secret values; name the variable and where to get it. Prefer what you observed over what is usual; say in gaps where you inferred.
-Anything that describes the install is hidden from you: README and docs, install and uninstall scripts, installer logs and state, shell history. Derive the procedure from what runs and what it left on the machine.
-
-The install.md format:
-$spec
-"@
+$system = Get-Prompt 'probe' @{
+    os_word = $(if ($linux) { 'Linux' } else { 'Windows' }); linux = $linux; os_version = "$($machine.os_version)"; arch = "$($machine.arch)"; gpu = "$($machine.gpu)"; gpus = "$($machine.gpus)"
+    driver = "$($machine.driver)"; ram_gb = "$($machine.ram_gb)"; half_turns = [math]::Floor($MaxTurns / 2); max_turns = $MaxTurns; spec = $spec
+}
 $promptVersion = 'probe-5'
 if ($GuidanceFile) {
     $guidance = [IO.File]::ReadAllText($GuidanceFile) | ConvertFrom-Json
     if ("$($guidance.text)".Trim()) {
-        $system += "`n`nLessons from probes of other projects (general habits that recovered what earlier probes missed; apply them where they fit this machine):`n$($guidance.text)"
+        $system += Get-PromptMessage 'probe_guidance' @{ text = "$($guidance.text)" }
         $promptVersion = "probe-5+$($guidance.id)"
     }
 }
@@ -416,9 +392,15 @@ if ($GuidanceFile) {
 $user = if ($Draft -and $AgentReport) {
     $rep = Get-Content $AgentReport -Raw | ConvertFrom-Json
     $failed = @($rep.commands | Where-Object { $_.exit -and $_.exit -ne 0 } | Select-Object -Last 8 | ForEach-Object { "- $($_.origin) [exit $($_.exit)]: $(Format-AgentBrief $_.command 200)" })
-    "Refine this install.md. It was replayed with the InstallZero agent on a clean machine ($($rep.machine.os_version), GPU $($rep.machine.gpu)) and ended '$($rep.status)'.`nSteps: $(($rep.steps.PSObject.Properties | ForEach-Object { "$($_.Name)=$($_.Value)" }) -join ', ')`nBlocked on: $($rep.blocked_on)`nFailed commands:`n$($failed -join "`n")`nAgent summary: $($rep.summary)`n`nFix the steps that failed (compare with this machine, where it works), then write_install_md and finish.`n`nCurrent draft:`n$(Get-Content $Draft -Raw)"
+    Get-PromptMessage 'probe_refine' @{ os_version = "$($rep.machine.os_version)"; gpu = "$($rep.machine.gpu)"; status = "$($rep.status)"
+        steps = (($rep.steps.PSObject.Properties | ForEach-Object { "$($_.Name)=$($_.Value)" }) -join ', '); blocked_on = "$($rep.blocked_on)"
+        failed = ($failed -join "`n"); summary = "$($rep.summary)"; draft = (Get-Content $Draft -Raw) }
 } else {
-    "Probe this machine and write the install.md.$(if ($Target) { " Target: $Target$(if ($targetDir -or $linuxDir) { ' (a folder here)' })." } else { ' No target given: find the most likely user-installed project among what runs.' })"
+    Get-PromptMessage 'probe_user' @{ target = $Target; target_here = [bool]($targetDir -or $linuxDir) }
+}
+if ($PromptOut) {
+    [IO.File]::WriteAllText([IO.Path]::GetFullPath($PromptOut), (ConvertTo-Json ([ordered]@{ prompt_version = $promptVersion; system = $system; user = $user; tools = @($tools) }) -Depth 20), [Text.UTF8Encoding]::new($false))
+    return
 }
 
 # ---- run ------------------------------------------------------------------------
@@ -438,14 +420,14 @@ try {
             $s = $script:DraftStats
             if ($script:FormatPushedBack -or -not $s -or ($s.steps -and -not $s.problems)) { return $null }
             $script:FormatPushedBack = $true
-            return "The saved install.md cannot be replayed: $(@(Test-InstallMd (Read-InstallMd $script:Out)) -join '; '). Fix the format (step headings are '## Step <n>: <id> - <title>', blocks are requires, detect, install or verify) with write_install_md, then finish."
+            return Get-PromptMessage 'probe_format_problems' @{ problems = (@(Test-InstallMd (Read-InstallMd $script:Out)) -join '; ') }
         }
         $start = $Text.IndexOf("---`n"); if ($start -lt 0) { $start = $Text.IndexOf("---`r`n") }
         if ($start -ge 0 -and $Text.Substring($start) -match '(?ms)^name\s*:.*^##\s+Step\s+\d+') {
             $script:SavedFromText = $Text
-            return "You wrote the install.md in a message instead of calling write_install_md; it has been saved for you.`n$(Invoke-DraftCheck $Text.Substring($start))`nFix any failing checks with write_install_md, then call finish."
+            return Get-PromptMessage 'probe_saved_at_finish' @{ checks = (Invoke-DraftCheck $Text.Substring($start)) }
         }
-        'No install.md is saved yet. Call write_install_md with the complete document, then finish.'
+        Get-PromptMessage 'probe_not_saved'
     }
     $script:DraftReminded = $false; $script:BestDraft = $null; $script:SavedFromText = ''; $script:FormatPushedBack = $false
     $checkpoint = {
@@ -456,17 +438,16 @@ try {
             $start = $text.IndexOf("---`n"); if ($start -lt 0) { $start = $text.IndexOf("---`r`n") }
             if ($start -ge 0 -and $text.Substring($start) -match '(?ms)^name\s*:.*^##\s+Step\s+\d+') {
                 $script:SavedFromText = $text
-                return "Your install.md from your last message was saved:`n$(Invoke-DraftCheck $text.Substring($start))`nIf checks fail, send a corrected complete install.md as a message (or with write_install_md); otherwise call finish."
+                return Get-PromptMessage 'probe_saved_from_message' @{ checks = (Invoke-DraftCheck $text.Substring($start)) }
             }
         }
         if ($script:DraftReminded -or (Test-Path $script:Out) -or $Run.steps -lt [math]::Floor($MaxTurns / 2)) { return $null }
         $script:DraftReminded = $true
-        "You are halfway through your budget ($($Run.steps) of $MaxTurns turns) and no install.md is saved. Call write_install_md now with a complete first draft from what you know; use the remaining turns to fix failing checks and fill gaps."
+        Get-PromptMessage 'probe_halfway' @{ turns = $Run.steps; max_turns = $MaxTurns }
     }
-    $parseNudge = 'Your last reply was cut off or could not be parsed, most likely because the install.md inside a tool call was too long. Do not put the document in a tool call: reply with the complete install.md as a plain message starting with the --- front matter. Keep it compact: one or two sentences of prose per step, one block per kind unless this machine needs a variant.'
-    $finalNudge = 'Your investigation budget is spent. Call write_install_md now with the complete install.md from what you have found (mark guesses in the prose), then call finish. Only those two tools are available.'
     $run = Invoke-AgentLoop -Session $session -System $system -User $user -Tools $tools -Dispatch $dispatch -MaxTurns $MaxTurns -TimeoutMinutes $TimeoutMinutes -Transcript $transcript -MaxTokens 8192 `
-        -FinishGuard $finishGuard -Checkpoint $checkpoint -FinalTools @('write_install_md') -FinalNudge $finalNudge -ParseFailureNudge $parseNudge
+        -FinishGuard $finishGuard -Checkpoint $checkpoint -FinalTools @('write_install_md') -ResultSaved { Test-Path $script:Out } `
+        -FinalNudge (Get-PromptMessage 'probe_final') -ParseFailureNudge (Get-PromptMessage 'probe_parse_failure') -UnchangedWriteHint (Get-PromptMessage 'probe_unchanged_hint')
     # Last resort: a document the model wrote as a message is still the result.
     if (-not (Test-Path $script:Out) -and $run.last_long_text) {
         $text = $run.last_long_text

@@ -36,6 +36,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot '..\..\LinuxTarget.ps1')
 $jobScript = Join-Path $PSScriptRoot 'Invoke-EvalJob.ps1'
 $jobsDir = Join-Path $Root 'jobs'
 New-Item -ItemType Directory -Force $jobsDir, (Join-Path $Root 'snapshots') | Out-Null
@@ -82,16 +83,30 @@ function Read-NewLines($J) {
 
 function Update-Progress($J, [string[]]$Lines) {
     foreach ($l in $Lines) {
-        if ($l -match '^PHASE: ([^|]+?)(?: \| (.*))?$') { $J.Progress.phase = $Matches[1]; $J.Progress.msg = $Matches[2]; if ($Matches[1] -ne 'probing') { $J.Progress.Remove('turn'); $J.Progress.Remove('max_turns') } }
+        if ($l -match '^PHASE: ([^|]+?)(?: \| (.*))?$') { $J.Progress.phase = $Matches[1]; $J.Progress.msg = $Matches[2]; if ($Matches[1] -notin 'probing', 'training') { foreach ($k in 'turn', 'max_turns', 'pct', 'eta_s') { $J.Progress.Remove($k) } } }
+        elseif ($l -match '^PROGRESS: (\d+)/(\d+) eta (-?\d+)') { $J.Progress.pct = [math]::Round(100 * [int]$Matches[1] / [math]::Max(1, [int]$Matches[2]), 1); $J.Progress.eta_s = $(if ([int]$Matches[3] -ge 0) { [int]$Matches[3] } else { $null }); $J.Progress.examples = "$($Matches[1])/$($Matches[2])" }
         elseif ($l -match 'Turn (\d+) of (\d+)') { $J.Progress.turn = [int]$Matches[1]; $J.Progress.max_turns = [int]$Matches[2] }
+        elseif ($l -match '^STEP: (\d+)/(\d+) loss ([\d.]+)(?: peak ([\d.]+) GB)?') { $J.Progress.turn = [int]$Matches[1]; $J.Progress.max_turns = [int]$Matches[2]; $J.Progress.loss = [double]$Matches[3]; $J.Progress.msg = "loss $($Matches[3])$(if ($Matches[4]) { ", GPU peak $($Matches[4]) GB" })" }
+        elseif ($l -match '^HFJOB: (\S+)') { $J.Progress.hf_url = $Matches[1] }
+        elseif ($l -match '^METRIC: (\{.*\})$') { try { $m = $Matches[1] | ConvertFrom-Json; if ($m.eval_loss) { $J.Progress.eval_loss = $m.eval_loss }; if ($m.gpu) { $J.Progress.gpu = $m.gpu } } catch { } }
     }
 }
 
 function Stop-JobTree($J) {
     if ($J.Proc -and -not $J.Proc.HasExited) { & taskkill.exe /T /F /PID $J.Proc.Id 2>&1 | Out-Null }
+    # A train job on Hugging Face Jobs bills until the remote job stops, not this process.
+    $hf = Join-Path $J.Work 'hf-job.json'
+    if (Test-Path $hf) {
+        $s = try { Get-Content $hf -Raw | ConvertFrom-Json } catch { $null }
+        if ($s -and -not $s.done -and $s.python -and (Test-Path $s.python)) {
+            Write-Line "cancelling Hugging Face job $($s.id)" 'Yellow'
+            & $s.python $s.script cancel --state $hf 2>&1 | ForEach-Object { Write-Line "  $_" }
+        }
+    }
     $df = Join-Path $J.Work 'distro.txt'
     if (Test-Path $df) {
         $d = (Get-Content $df -Raw).Trim()
+        if ($d -and (((wsl.exe -l -q) -replace "`0", '') -split "`r?`n" | ForEach-Object { $_.Trim() }) -contains $d) { Reset-WslFirewall $d | Out-Null }
         if ($d) { wsl.exe --unregister $d 2>&1 | Out-Null; Remove-Item (Join-Path $Root "distros\$d") -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }
@@ -119,7 +134,7 @@ function Complete-EvalJob($J) {
     }
     Update-Progress $J $lines
     $body = @{ id = $J.Id; status = $o.status; error = $o.error; log = $lines; progress = $J.Progress }
-    foreach ($k in 'result', 'snapshot', 'draft', 'ports', 'transcript', 'diagnosis', 'lessons') { if ($o.PSObject.Properties[$k]) { $body[$k] = $o.$k } }
+    foreach ($k in 'result', 'snapshot', 'draft', 'ports', 'transcript', 'diagnosis', 'lessons', 'sft', 'train') { if ($o.PSObject.Properties[$k]) { $body[$k] = $o.$k } }
     for ($i = 0; $i -lt 5; $i++) { try { Invoke-Api '/api/worker/complete' $body | Out-Null; break } catch { Start-Sleep 3 } }
     Stop-JobTree $J
     Write-Line "finished $($J.Id): $($o.status)$(if ($o.error) { " - $($o.error)" })" $(if ($o.status -eq 'done') { 'Green' } else { 'Yellow' })
@@ -155,8 +170,34 @@ foreach ($d in Get-ChildItem $jobsDir -Directory -ErrorAction SilentlyContinue) 
     }
 }
 
+# llama-servers on Hugging Face Jobs (hf: models, agent\eval\sft\hf_serve.py)
+# bill by the hour: stop one once no queued or running job uses its model for
+# three checks in a row. One just started may still be loading for a probe.
+$hfServeDir = Join-Path $env:LOCALAPPDATA 'installzero\hf-serve'
+$hfIdle = @{}
+$lastHfCheck = [datetime]::UtcNow
+function Stop-IdleHfServers {
+    $states = @(Get-ChildItem $hfServeDir -Filter *.json -ErrorAction SilentlyContinue)
+    if (-not $states) { return }
+    $active = @((Invoke-RestMethod "$Server/api/jobs?status=queued,running&q=hf:&limit=200" -TimeoutSec 30).jobs) |
+        Where-Object { "$($_.model)" -like 'hf:*' } | ForEach-Object { "$($_.model)".Substring(3) }
+    foreach ($f in $states) {
+        $s = try { Get-Content $f.FullName -Raw | ConvertFrom-Json } catch { continue }
+        $model = "$($s.model)"
+        $age = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - [double]$s.started_at
+        if ($active -contains $model -or $age -lt 900) { $hfIdle[$model] = 0; continue }
+        $hfIdle[$model] = 1 + [int]$hfIdle[$model]
+        if ($hfIdle[$model] -ge 3) {
+            $py = Join-Path $env:LOCALAPPDATA 'installzero\sft\venv\Scripts\python.exe'
+            & $py (Join-Path $PSScriptRoot '..\sft\hf_serve.py') stop --model $model 2>&1 | ForEach-Object { Write-Line "  $_" 'Yellow' }
+            $hfIdle.Remove($model)
+        }
+    }
+}
+
 Write-Line "worker $Name -> $Server, $Slots slots ($GpuSlots for local models)$(if ($Types) { ", types $($Types -join ',')" })" 'Cyan'
 $lastBeat = [datetime]::MinValue
+$timeoutHinted = $false
 try {
     while ($true) {
         try {
@@ -172,11 +213,15 @@ try {
                 if ($resp.cancel) { Write-Line "cancelling $($J.Id)" 'Yellow'; Stop-JobTree $J }
             }
 
-            if (((Get-Date) - $lastBeat).TotalSeconds -ge 10) {
+            if (([datetime]::UtcNow - $lastBeat).TotalSeconds -ge 10) {
                 $beat = Invoke-Api '/api/worker/heartbeat' @{ worker = $Name; host = $env:COMPUTERNAME; slots = $Slots; gpu_slots = $GpuSlots; running = @($running.Keys)
                     local_models = @(Get-LocalModels); snapshots = @(Get-Snapshots); snapshot_root = $Root }
                 foreach ($id in @($beat.cancel)) { if ($id -and $running[$id]) { Write-Line "cancelling $id" 'Yellow'; Stop-JobTree $running[$id] } }
-                $lastBeat = Get-Date
+                $lastBeat = [datetime]::UtcNow
+            }
+            if (([datetime]::UtcNow - $lastHfCheck).TotalSeconds -ge 120) {
+                $lastHfCheck = [datetime]::UtcNow
+                try { Stop-IdleHfServers } catch { Write-Line "hf server check: $($_.Exception.Message)" 'Yellow' }
             }
 
             while ($running.Count -lt $Slots) {
@@ -187,6 +232,10 @@ try {
             }
         } catch {
             Write-Line "console unreachable or error: $($_.Exception.Message)" 'Red'
+            if ($_.Exception.Message -match 'timed out' -and -not $timeoutHinted) {
+                Write-Line 'A timeout (not a refused connection) usually means a WSL distro left firewall rules in the network all distros share. Run: wsl --shutdown, then restart Docker Desktop.' 'Yellow'
+                $timeoutHinted = $true
+            }
             Start-Sleep 5
         }
         Start-Sleep $PollSeconds

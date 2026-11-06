@@ -54,14 +54,16 @@ foreach ($p in $Project) {
             if ($LASTEXITCODE -ne 0) { throw "wsl --import failed ($LASTEXITCODE)" }
             $keepAlive = Start-Process wsl.exe -ArgumentList "-d $distro -u root -- sleep infinity" -WindowStyle Hidden -PassThru
             try {
+                Reset-WslFirewall $distro | Out-Null
                 $t0 = Get-Date
-                $ready = Invoke-WslBash $distro "for i in `$(seq 1 $([math]::Ceiling($def.ready_timeout_sec / 5))); do ($($def.ready)) && exit 0; sleep 5; done; exit 1" ($def.ready_timeout_sec + 30)
+                $ready = Invoke-WslBash $distro "$($WslCurlTimeout)for i in `$(seq 1 $([math]::Ceiling($def.ready_timeout_sec / 5))); do ($($def.ready)) && exit 0; sleep 5; done; exit 1" ($def.ready_timeout_sec + 30)
                 if ($ready.Code) { Write-Warning "$p did not become ready in $($def.ready_timeout_sec)s; skipping this run. $($ready.Out)"; continue }
                 Write-Step "ready after $([int]((Get-Date) - $t0).TotalSeconds)s; probing"
                 $evalArgs = @{ Repo = $def.id; Probe = $true; Wsl = $distro; Target = $def.target; HidePaths = @($hiddenDir) }
                 if ($model -match '^local:(.+)$') { $evalArgs.Model = $Matches[1] } else { $evalArgs.Remote = $model }
                 & (Join-Path $evalDir 'Invoke-ProbeEval.ps1') @evalArgs
             } finally {
+                Reset-WslFirewall $distro | Out-Null
                 if (-not $keepAlive.HasExited) { Stop-Process -Id $keepAlive.Id -Force -ErrorAction SilentlyContinue }
                 if ($KeepDistro) { Write-Step "kept $distro (remove: wsl --unregister $distro)" }
                 else { wsl.exe --unregister $distro | Out-Null; Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue }

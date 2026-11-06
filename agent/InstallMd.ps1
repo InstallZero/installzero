@@ -91,14 +91,28 @@ function Get-MachineProfile([string]$InstallDir = $env:USERPROFILE) {
     }
 }
 
+# The leading number or dotted version of a requirement or machine value
+# ("16 GB", "550", "550.54.14"); $null when there is none.
+function ConvertTo-LooseVersion([string]$Text) {
+    if ($Text -notmatch '^\s*(\d+(\.\d+){0,3})') { return $null }
+    $v = $Matches[1]
+    if ($v -notmatch '\.') { $v += '.0' }
+    [version]$v
+}
+
+# A value with no number in it does not constrain (like an unknown key).
 function Test-Condition([string]$Key, [string]$Want, $Machine) {
     $values = @($Want -split ',' | ForEach-Object { $_.Trim().ToLowerInvariant() } | Where-Object { $_ })
+    $num = if ($values.Count -and $values[0] -match '^(\d+(\.\d+)?)') { [double]$Matches[1] }
     switch ($Key) {
         { $_ -in 'os', 'arch' } { return $values -contains $Machine.$Key }
         'gpu' { return ($values -contains 'any') -or ($values -contains $Machine.gpu) }
-        'min_ram_gb' { return $Machine.ram_gb -ge [double]$values[0] }
-        'min_disk_gb' { return ($null -eq $Machine.disk_gb) -or $Machine.disk_gb -ge [double]$values[0] }
-        'min_driver' { return $Machine.driver -and ([version]$Machine.driver -ge [version]$values[0]) }
+        'min_ram_gb' { return ($null -eq $num) -or $Machine.ram_gb -ge $num }
+        'min_disk_gb' { return ($null -eq $num) -or ($null -eq $Machine.disk_gb) -or $Machine.disk_gb -ge $num }
+        'min_driver' {
+            $need = ConvertTo-LooseVersion $values[0]; $have = ConvertTo-LooseVersion $Machine.driver
+            return (-not $need) -or [bool]($have -and $have -ge $need)
+        }
         default { return $true }
     }
 }
@@ -117,7 +131,10 @@ function Select-StepBlock($Step, [string]$Kind, $Machine) {
         $b.Kind -eq $Kind -and -not @($b.When.Keys | Where-Object { -not (Test-Condition $_ $b.When[$_] $Machine) }).Count -and
         ($Machine.os -ne 'windows' -or ($(if ($b.Shell) { $b.Shell } else { $default }) -in 'powershell', 'pwsh') -or $b.When['os'] -eq 'windows')
     })
-    $fits | Sort-Object { $_.When.Count } -Descending | Select-Object -First 1
+    # The first of those with the most conditions (Sort-Object is not stable).
+    $best = $null
+    foreach ($b in $fits) { if (-not $best -or $b.When.Count -gt $best.When.Count) { $best = $b } }
+    $best
 }
 
 function Expand-Placeholders([string]$Code, [hashtable]$Values) {

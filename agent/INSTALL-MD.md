@@ -62,8 +62,8 @@ py -3.12 -c "import sys; print(sys.version)"
   - Shells: `powershell` (default on Windows) or `bash`.
 - **Variants**: `key=value` pairs after the shell (same keys as `requires`)
   limit a block to matching machines. Of the blocks of one kind that match,
-  the one with the most conditions is used, so a generic block can sit next
-  to specific ones.
+  the one with the most conditions is used (the first of them on a tie), so
+  a generic block can sit next to specific ones.
 - **Placeholders**: `{{INSTALL_DIR}}` (the install folder) and
   `{{REPO_DIR}}` (`{{INSTALL_DIR}}\<name>`) are replaced before running.
 - **Secrets**: never written into the file. Name the variable and where the

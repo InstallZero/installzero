@@ -31,11 +31,37 @@ function Clear-WslDockerNet([string]$Distro) {
     Invoke-WslBash $Distro @'
 systemctl stop docker.socket docker containerd >/dev/null 2>&1 || true
 for b in $(ip -o link show type bridge | awk -F': ' '{print $2}' | cut -d@ -f1 | grep -E '^(docker0|br-[0-9a-f]{12})$'); do ip link delete "$b" 2>/dev/null || true; done
-if command -v iptables-save >/dev/null; then iptables-save | grep -vi docker | iptables-restore 2>/dev/null || true; fi
-if command -v ip6tables-save >/dev/null; then ip6tables-save | grep -vi docker | ip6tables-restore 2>/dev/null || true; fi
+if command -v iptables-save >/dev/null; then iptables-save | grep -viE 'docker|br-[0-9a-f]{12}' | iptables-restore 2>/dev/null || true; fi
+if command -v ip6tables-save >/dev/null; then ip6tables-save | grep -viE 'docker|br-[0-9a-f]{12}' | ip6tables-restore 2>/dev/null || true; fi
 true
 '@ 120
 }
+
+# Firewall rules a recipe turns on (bbb-install.sh enables ufw with incoming
+# denied) apply to that shared namespace too, where they drop the Windows
+# host's connections to Docker Desktop's published ports (the eval console)
+# and outlive the distro. Stops ufw and firewalld and opens the filter
+# chains, without changing their saved config: a snapshot still boots
+# with its firewall on, so call this after every boot and before deleting
+# the distro.
+function Reset-WslFirewall([string]$Distro) {
+    Invoke-WslBash $Distro @'
+timeout 120 systemctl is-system-running --wait >/dev/null 2>&1 || true
+systemctl stop ufw firewalld >/dev/null 2>&1 || true
+for t in iptables ip6tables; do
+  command -v $t-save >/dev/null || continue
+  $t-save | grep -vE '^-A (INPUT|OUTPUT) |ufw' | sed -E 's/^:(INPUT|OUTPUT|FORWARD) (DROP|REJECT)/:\1 ACCEPT/' | $t-restore 2>/dev/null || true
+done
+if command -v nft >/dev/null; then nft list tables 2>/dev/null | awk '$3 ~ /firewalld/ {print $2, $3}' | while read f n; do nft delete table "$f" "$n"; done; fi
+true
+'@ 180
+}
+
+# With mirrored networking, connecting to a closed port in WSL is not refused
+# but hangs about 130 s, so a readiness loop of plain curl calls takes hours
+# to give up. Prefix for recipe and readiness scripts: a connect timeout for
+# curl, in /run so it never reaches a snapshot or the probe's shell.
+$script:WslCurlTimeout = "mkdir -p /run/bench-curl && echo 'connect-timeout = 10' > /run/bench-curl/.curlrc && export CURL_HOME=/run/bench-curl`n"
 
 function Format-WslResult($R, [int]$Max = 12000) {
     $t = "$($R.Out)"
@@ -57,19 +83,47 @@ $script:BashReadOnly = @{
     any     = '^(cd|cat|ls|ll|head|tail|grep|egrep|fgrep|zgrep|zcat|ps|ss|netstat|lsof|journalctl|which|whereis|type|uname|lsb_release|hostname|id|whoami|groups|getent|env|printenv|df|du|free|nproc|lscpu|lsblk|findmnt|nvidia-smi|nvcc|test|\[|\[\[|echo|printf|true|false|stat|file|readlink|realpath|wc|sort|uniq|cut|tr|jq|yq|tree|basename|dirname|date|uptime|column|namei|getfacl|ldd|md5sum|sha256sum|exit|sleep|seq|diff|cmp|strings|nl|less|more|pwd|ulimit|timedatectl|hostnamectl|lsmod|blkid|awk|sed|xxd|od|python3?|node|npm|pip3?|git|docker|systemctl|dpkg|dpkg-query|apt|apt-cache|apt-mark|snap|curl|wget|ip|sysctl|crontab|openssl|find|command|mount|java|go|rustc|cargo|conda|ruby|php|psql|mysql|redis-cli|helm|kubectl|kind|k3s)$'
     keyword = '^(if|then|else|elif|fi|for|while|until|do|done|in|case|esac|function|time|!|\{|\}|local|export|declare|readonly)$'
 }
+# Splits a bash script into simple commands at ; | || && & ( ) and newlines
+# outside quotes, so a quoted pattern such as grep -E 'a|b' stays one command.
+# The & of the redirections 2>&1 and &> does not split.
+function Split-BashCommands([string]$Code) {
+    $parts = [Collections.Generic.List[string]]::new(); $cur = New-Object Text.StringBuilder; $q = [char]0
+    for ($i = 0; $i -lt $Code.Length; $i++) {
+        $ch = $Code[$i]
+        if ($q) {
+            [void]$cur.Append($ch)
+            if ($ch -eq '\' -and $q -eq '"' -and $i + 1 -lt $Code.Length) { [void]$cur.Append($Code[++$i]) }
+            elseif ($ch -eq $q) { $q = [char]0 }
+            continue
+        }
+        if ($ch -eq '\' -and $i + 1 -lt $Code.Length) { [void]$cur.Append($ch).Append($Code[++$i]); continue }
+        if ($ch -eq "'" -or $ch -eq '"') { $q = $ch; [void]$cur.Append($ch); continue }
+        $redirect = $ch -eq '&' -and (($i -gt 0 -and $Code[$i - 1] -eq '>') -or ($i + 1 -lt $Code.Length -and $Code[$i + 1] -eq '>'))
+        if (-not $redirect -and "$ch" -match '^[;|&()\r\n]$') {
+            $parts.Add($cur.ToString()); [void]$cur.Clear()
+            if ($i + 1 -lt $Code.Length -and (($ch -eq '|' -and $Code[$i + 1] -eq '|') -or ($ch -eq '&' -and $Code[$i + 1] -eq '&'))) { $i++ }
+            continue
+        }
+        [void]$cur.Append($ch)
+    }
+    $parts.Add($cur.ToString())
+    $parts
+}
+
 function Test-BashReadOnly([string]$Code) {
     $c = $Code -replace '\\\r?\n', ' '
     if ($c -match '`') { return 'uses backticks' }
     $noNull = $c -replace '\d?>>?\s*/dev/null|&>\s*/dev/null|\d?>&\d', ''
     if ($noNull -match '(^|[^<>=-])>{1,2}\s*[^\s>&]') { return 'writes a file (output redirection)' }
-    if ($c -match '(?i)\b(sudo|su|tee|xargs|eval|exec|source|nohup|setsid|dd|truncate|shred)\b') { return "'$($Matches[1])' is not read-only" }
+    if ($c -match '(?i)\b(sudo|su)\b') { return "'$($Matches[1])' is not needed or run here: you are already root, so run the command itself" }
+    if ($c -match '(?i)\bdocker\s+(compose\s+)?exec\b') { return "docker exec is not read-only: read a container's settings with docker inspect, docker compose config or docker logs" }
+    if ($c -match '(?i)\b(tee|xargs|eval|exec|source|nohup|setsid|dd|truncate|shred)\b') { return "'$($Matches[1])' is not read-only" }
     # Command substitutions are checked on their own and stand for a word in
     # the command around them.
     $subs = [Collections.Generic.List[string]]::new()
     while ($c -match '(\$|<)\(([^()]*)\)') { $subs.Add($Matches[2]); $c = $c.Replace($Matches[0], 'SUBST') }
     foreach ($s in $subs) { if ($s.Trim()) { $w = Test-BashReadOnly $s; if ($w) { return $w } } }
-    $segments = $c -replace '[()]', ';' -split '\|\||&&|[;|&\r\n]'
-    foreach ($seg in $segments) {
+    foreach ($seg in (Split-BashCommands $c)) {
         $words = @(($seg.Trim() -replace '^(\w+=("[^"]*"|''[^'']*''|\S*)\s+)+', '') -split '\s+' | Where-Object { $_ })
         if ($words.Count -and $words[0] -in 'for', 'select') { continue }
         while ($words.Count -and $words[0] -match $script:BashReadOnly.keyword) { $words = @($words | Select-Object -Skip 1) }
@@ -78,7 +132,7 @@ function Test-BashReadOnly([string]$Code) {
         if ($cmd -notmatch $script:BashReadOnly.any) { return "'$cmd' is not on the read-only list" }
         $sub = "$($words[1]) $($words[2]) $($words[3])".Trim()
         $why = switch -Regex ($cmd) {
-            '^docker$' { if ($rest -notmatch '^(ps|images|inspect|logs|version|info|top|port|stats\b.*--no-stream|system df|image (ls|inspect|history)|container (ls|inspect|logs|top|port)|network (ls|inspect)|volume (ls|inspect)|compose\b.*\b(ps|ls|config|images|version|logs|top)\b|context (ls|show)|buildx (ls|version)|--version|-v)\b') { 'docker: only ps, images, inspect, logs, version, info and other listings' } }
+            '^docker$' { if ($rest -notmatch '^(ps|images|inspect|logs|version|info|top|port|stats\b.*--no-stream|system df|image (ls|inspect|history)|container (ls|inspect|logs|top|port)|network (ls|inspect)|volume (ls|inspect)|compose\b.*\b(ps|ls|config|images|version|logs|top)\b|context (ls|show)|buildx (ls|version)|--version|-v)\b') { 'docker: only ps, images, inspect, logs, version, info and other listings (a container''s settings: docker inspect, docker compose config, docker logs)' } }
             '^systemctl$' { if ($rest -notmatch '(^|\s)(status|list-units|list-unit-files|list-timers|list-sockets|show|is-active|is-enabled|is-failed|cat|get-default|--version)\b') { 'systemctl: only status, list-*, show, is-*, cat' } }
             '^(dpkg)$' { if ($rest -notmatch '^(-l|-s|-L|-S|-p|--list|--status|--listfiles|--search|--print-architecture|--get-selections|--version)') { 'dpkg: only queries' } }
             '^apt$' { if ($sub -notmatch '^(list|policy|show|search|--version)') { 'apt: only list, policy, show, search' } }
@@ -99,7 +153,7 @@ function Test-BashReadOnly([string]$Code) {
             '^ip$' { if ($rest -notmatch '^(-\w+\s+)*(a|addr|address|r|route|l|link|n|neigh)(\s+(show|list|ls))?(\s|$)' -or $rest -match '\b(add|del|delete|set|flush|change|replace)\b') { 'ip: only show' } }
             '^mount$' { if ($rest) { 'mount: only without arguments' } }
             '^openssl$' { if ($sub -notmatch '^(version|x509|s_client)') { 'openssl: only version and x509 inspection' } }
-            '^(psql|mysql|redis-cli)$' { 'database clients are not run' }
+            '^(psql|mysql|redis-cli)$' { 'database clients are not run: the database name, user and host are in the app''s config files or .env (read_file masks secret values), docker compose config or docker inspect' }
             '^(helm|kubectl)$' { if ($sub -notmatch '^(get|describe|version|list|ls|status|config (view|get-contexts|current-context)|api-resources|cluster-info|top|logs)') { "$($cmd): only get, describe, list, logs" } }
             '^(kind|k3s)$' { if ($sub -notmatch '^(get|version|--version)') { "$($cmd): only get and version" } }
             '^(conda)$' { if ($sub -notmatch '^(env list|list|info|--version)') { 'conda: only listings' } }
@@ -132,8 +186,6 @@ fi
 }
 
 $script:LinuxInventoryAreas = 'software', 'containers', 'processes', 'ports', 'services', 'system', 'files', 'python', 'node', 'git', 'gpu', 'env'
-$script:LinuxInventoryHelp = 'Read-only inventory of one area of this Linux machine. software: packages installed by hand (apt-mark showmanual with versions), apt sources and keyrings, snaps, /opt and /usr/local. containers: containers with compose project, working dir and files, images, volumes, networks. processes: all processes with command lines. ports: listening TCP and UDP ports with the owning program. services: running and enabled systemd services, timers, cron. system: OS, kernel, hostname, /etc/hosts, addresses, users and groups, sysctl settings, mounts, disk and memory. files: folders created or changed since the OS was installed, under /etc, /opt, /srv, /data, /usr/local, /var/lib, /home and /root. python: interpreters, venvs under path with their packages. node: node, npm and global packages. git: repos under path with remote, branch, commit. gpu: nvidia-smi, nvcc, CUDA. env: environment of a login shell, /etc/environment and /etc/profile.d (secrets masked).'
-
 function Get-LinuxInventory([string]$Distro, [string]$Area, [string]$Path) {
     $p = if ($Path) { $Path } else { '/' }
     $sh = switch ($Area) {
