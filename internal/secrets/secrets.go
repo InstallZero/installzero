@@ -7,6 +7,8 @@ package secrets
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"unicode/utf16"
@@ -143,6 +145,56 @@ func Lines(text string) []string {
 	}
 	if start < len(text) {
 		out = append(out, text[start:])
+	}
+	return out
+}
+
+var urlPassword = psrx.MustCompile(`://[^/\s:@]+:([^@\s/]+)@`)
+
+// Known is Get-SecretValues: values of secret-named variables in dir's .env
+// files and in environ (NAME=value entries), and passwords embedded in URLs
+// there. A value seen twice keeps the last name.
+func Known(dir string, environ []string) []Value {
+	found := map[string]string{}
+	var order []string
+	add := func(name, value string) {
+		set := func(v string) {
+			if _, ok := found[v]; !ok {
+				order = append(order, v)
+			}
+			found[v] = name
+		}
+		if g := urlPassword.Groups(value); g != nil && length(g[1]) >= 4 {
+			set(g[1])
+		}
+		if IsSecretName(name) && length(value) >= 6 {
+			set(value)
+		}
+	}
+	if entries, err := os.ReadDir(dir); err == nil {
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasPrefix(strings.ToLower(e.Name()), ".env") || !IsEnvFile(e.Name()) {
+				continue
+			}
+			data, err := os.ReadFile(filepath.Join(dir, e.Name()))
+			if err != nil {
+				continue
+			}
+			for _, x := range EnvEntries(string(data)) {
+				if x.Name != "" {
+					add(x.Name, x.Value)
+				}
+			}
+		}
+	}
+	for _, kv := range environ {
+		if i := strings.Index(kv, "="); i > 0 {
+			add(kv[:i], kv[i+1:])
+		}
+	}
+	out := make([]Value, 0, len(order))
+	for _, v := range order {
+		out = append(out, Value{Value: v, Name: found[v]})
 	}
 	return out
 }

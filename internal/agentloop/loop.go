@@ -762,8 +762,10 @@ func compress(ms []llm.Message, maxChars, keep int) {
 	}
 }
 
-// brief is Format-AgentBrief: whitespace collapsed, and a long text shown
+// Brief is Format-AgentBrief: whitespace collapsed, and a long text shown
 // as its end, from a sentence start when one is near.
+func Brief(text string, max int) string { return brief(text, max) }
+
 func brief(text string, max int) string {
 	t := strings.TrimSpace(spaces.ReplaceAllString(text, " "))
 	r := []rune(t)

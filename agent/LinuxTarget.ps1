@@ -8,7 +8,12 @@ function Invoke-WslBash([string]$Distro, [string]$Script, [int]$TimeoutSec = 60,
     $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true
     $psi.RedirectStandardInput = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
     $psi.StandardOutputEncoding = [Text.UTF8Encoding]::new($false); $psi.StandardErrorEncoding = [Text.UTF8Encoding]::new($false)
-    $p = [Diagnostics.Process]::Start($psi)
+    # stdin is written in the console's input encoding; on a UTF-8 console
+    # that starts with a byte order mark, which breaks the script's first command.
+    $inEnc = [Console]::InputEncoding
+    $noBom = $inEnc.GetPreamble().Length -gt 0
+    if ($noBom) { try { [Console]::InputEncoding = [Text.UTF8Encoding]::new($false) } catch { $noBom = $false } }
+    try { $p = [Diagnostics.Process]::Start($psi) } finally { if ($noBom) { [Console]::InputEncoding = $inEnc } }
     $out = $p.StandardOutput.ReadToEndAsync(); $err = $p.StandardError.ReadToEndAsync()
     $body = if ($WorkingDirectory) { "cd '$WorkingDirectory' 2>/dev/null`n$Script" } else { $Script }
     $bytes = [Text.UTF8Encoding]::new($false).GetBytes(($body -replace "`r`n", "`n") + "`n")

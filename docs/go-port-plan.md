@@ -168,6 +168,21 @@ that comes with the WSL probe in phase 3.
   means delivery rate and macro recall within noise of each other (3 runs
   per repo; differences under about 0.05 recall).
 
+The WSL target and the Go probe are done (`installzero probe --wsl <distro>`;
+Windows targets still use `Probe.ps1`). `internal/target` holds the Linux
+views (inventory, machine profile, file reads, listings, grep) over any
+runner that runs bash as root, and `target/wsl` is that runner through
+`wsl.exe`. Both engines take `-ToolCalls`/`--tool-calls` to run a list of
+tool calls without a model; `fixtures/probe/Compare-ProbeTools.ps1` runs the
+41 calls in `fixtures/probe/tool-calls.json` (every inventory area, reads,
+refusals, the content guard, redaction, a timeout, a draft check) through
+both on a distro, and all outputs and counters match except live state
+(memory, clocks, Docker images). The prompts and tools match `-PromptOut`
+exactly. An end-to-end run with the local model on Ubuntu 24.04 saved a
+format-clean draft, its result and transcript pass `schemas/validate.py`,
+and the transcript replays identically. Still to do: the `engine` field in
+the eval worker and the A/B campaign.
+
 ### 4. Native targets (about 2 weeks)
 
 - `target/local_unix`: bash and inventory on Linux (dpkg/rpm, systemd,

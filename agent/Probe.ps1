@@ -68,6 +68,10 @@ param(
     # Write the system prompt, first user message and tools as JSON and stop
     # (the Go engine is checked against this).
     [string]$PromptOut = '',
+    # Run the tool calls in this JSON file ([{name, arguments}]) and write
+    # their outputs to <file>.out.json, then stop (the Go engine is checked
+    # against this).
+    [string]$ToolCalls = '',
     [switch]$Quiet
 )
 
@@ -400,6 +404,17 @@ $user = if ($Draft -and $AgentReport) {
 }
 if ($PromptOut) {
     [IO.File]::WriteAllText([IO.Path]::GetFullPath($PromptOut), (ConvertTo-Json ([ordered]@{ prompt_version = $promptVersion; system = $system; user = $user; tools = @($tools) }) -Depth 20), [Text.UTF8Encoding]::new($false))
+    return
+}
+if ($ToolCalls) {
+    $script:DraftReminded = $false; $script:BestDraft = $null
+    $callList = Get-Content $ToolCalls -Raw | ConvertFrom-Json
+    $outs = @(foreach ($c in $callList) {
+        $o = try { & $dispatch $c.name $c.arguments } catch { "error: $_" }
+        "$o"
+    })
+    $res = [ordered]@{ outputs = $outs; hidden_attempts = $script:HiddenAttempts; withheld_lines = $script:Withheld; guarded_lines = $script:LeakLines.Count; draft_checks = $script:DraftStats }
+    [IO.File]::WriteAllText([IO.Path]::GetFullPath("$ToolCalls.out.json"), (ConvertTo-Json $res -Depth 6), [Text.UTF8Encoding]::new($false))
     return
 }
 
