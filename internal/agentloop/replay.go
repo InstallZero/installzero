@@ -406,7 +406,7 @@ func (w *lineWriter) take() [][]byte {
 			return out
 		}
 		line := make([]byte, i)
-		copy(line, w.buf.Next(i+1)[:i])
+		copy(line, w.buf.Next(i + 1)[:i])
 		out = append(out, line)
 	}
 }

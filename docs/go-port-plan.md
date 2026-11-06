@@ -133,9 +133,10 @@ Windows PowerShell, because the check walks PowerShell's own syntax tree.
   transcript. Running a recorded run through the Go loop has to produce the
   same tool calls and the same tool outputs as the original.
 
-In progress. Done: the chat client (`internal/llm`: plain and streamed chat
-with loop stopping, the Responses API, hosted providers and their keys) and
-the loop (`internal/agentloop`). The replay runs inside the test rather than
+Done. The chat client (`internal/llm`: plain and streamed chat with loop
+stopping, the Responses API, hosted providers and their keys, `hf:` servers)
+and the loop (`internal/agentloop`, with `StartSession` choosing the model as
+`Start-AgentLlm` does). The replay runs inside the test rather than
 as a server: the recorded replies and errors stand in for the model, the
 recorded outputs for the tools, and every event the Go loop writes must
 equal the recorded one, through to the run's counters and stop reason.
@@ -146,8 +147,16 @@ excess calls, the budget running out, looping replies, a hosted model); the
 Go loop replays all of them identically, and every probe run on the eval host
 since the loop took its current form (31, `IZ_REPLAY_DIR`). Trimming, which
 only changes what is sent, has its own fixture (`loops/compress.json`).
-Left: per-model settings (`.iz.json`), `hf:` servers, and the llama-server
-lifecycle.
+
+The local runtime (`internal/llm/runtime.go`) picks backend and model as
+`Llm.ps1` does, applies a model's `.iz.json` settings, and runs llama.cpp
+b9771 from the doctor assets. Unlike the PowerShell engine it can download a
+missing build (only when allowed; pinned sha256 per archive), and it covers
+Linux (Vulkan or CPU; llama.cpp ships no Linux CUDA build) and macOS (Metal
+on Apple silicon). `IZ_LLAMA_TEST=1` starts the real server and runs the Go
+loop on it; on the RTX 4090 the fine-tuned Gemma loads on CUDA in about 10 s.
+Linux and macOS are compiled and unit-tested, not yet run on those systems;
+that comes with the WSL probe in phase 3.
 
 ### 3. Probe on WSL, then the A/B check (about 1-2 weeks)
 
