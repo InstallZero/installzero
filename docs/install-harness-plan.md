@@ -200,3 +200,28 @@ probe benchmark already uses:
   the runner's summary of the failed block said only "see journalctl", so
   a fix episode needs read tools (journalctl, ss) and not just the
   block's output.
+- 2026-11-07: `installzero uninstall [project] [--data] [--keep-packages]
+  [--plan] [-y]` (`internal/track`). `install` snapshots the target
+  before and after each step it runs (packages with versions, files under
+  /etc, /opt, /usr/local, /srv, the install folder and the top of
+  /var/lib, /var/log, /var/cache and home folders, /etc hashes, systemd
+  units, users, groups, Docker objects; on Windows also programs, PATH,
+  environment variables, services, scheduled tasks) and saves the
+  difference to `<state>/installs/<id>.json` after each step, failed
+  steps included. Before a run's first machine-wide step /etc is archived
+  on the target. Uninstall: the install.md's `uninstall` blocks (new,
+  optional), then containers, services, packages (apt is asked first
+  whether the purge would take a package that was there before), images,
+  networks, files, /etc files restored only when unchanged since, users
+  and groups; data only after a separate yes. Never undone: upgrades of
+  packages that were there, and system files package scripts changed in
+  a step that changed packages (unless the step's code names them); the
+  package manager owns those.
+- Round trip on a clean Ubuntu distro with the Jenkins install.md
+  (including its failed step 6): after `uninstall --data`, nothing of
+  Jenkins or Java is left (packages, files, users, units). The remaining
+  differences from before the install are the ca-certificates upgrade
+  (kept on purpose, consistent with itself), apt's caches and the
+  account backup files. The first version restored /etc files the
+  upgraded ca-certificates package had rewritten, leaving its trust store
+  inconsistent; that is what the package-script rule is for.

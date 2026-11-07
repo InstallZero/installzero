@@ -13,6 +13,7 @@ import (
 	"github.com/InstallZero/installzero/catalog"
 	"github.com/InstallZero/installzero/internal/source"
 	"github.com/InstallZero/installzero/internal/state"
+	"github.com/InstallZero/installzero/internal/track"
 )
 
 // Name is how this process was invoked, without a directory or .exe.
@@ -58,6 +59,7 @@ const commandList = `
   init                                    write a starter install.json
   probe --wsl <distro> [--target <path>]  write an install.md from a running install
   install [install.md] [--wsl <distro>]   run an install.md: detect, install, verify each step
+  uninstall [project] [--data]            undo everything a recorded install changed
 
 add takes --list to show phases and install nothing. remove takes --data to
 include data folders. -y skips prompts, --phase <id> limits the run to one
@@ -97,6 +99,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return cmdProbe(args[1:], stdout, stderr)
 	case "install":
 		return cmdInstall(args[1:], stdout, stderr)
+	case "uninstall":
+		return cmdUninstall(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command %q\n\n", args[0])
 		fmt.Fprint(stderr, usageText()+commandList)
@@ -280,10 +284,16 @@ func cmdList(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
-	if len(projects) == 0 {
+	recs, err := track.Store{Dir: dir}.List()
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	if len(projects) == 0 && len(recs) == 0 {
 		fmt.Fprintln(stdout, "No projects installed.")
 		return 0
 	}
+	printRecords(stdout, recs)
 	for _, p := range projects {
 		if p.Source != "" {
 			fmt.Fprintf(stdout, "%s\t%s\n", p.Name, p.Source)

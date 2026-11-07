@@ -60,6 +60,9 @@ py -3.12 -c "import sys; print(sys.version)"
     once its `verify` passes too).
   - `install`: does the step.
   - `verify`: exits 0 when the step worked. Required for every step.
+  - `uninstall` (optional): undoes the step beyond what InstallZero
+    tracks itself (packages, files, services, users), e.g. a database
+    the step created. Run by `installzero uninstall`, last step first.
   - Shells: `powershell` (default on Windows) or `bash`.
 - **Variants**: `key=value` pairs after the shell (same keys as `requires`)
   limit a block to matching machines. Of the blocks of one kind that match,

@@ -48,6 +48,9 @@ type Step struct {
 	*installmd.Step
 	Unmet                   []string
 	Detect, Install, Verify *Block
+	// Uninstall is the install.md's uninstall block for this machine; it is
+	// kept for installzero uninstall, not run.
+	Uninstall *Block
 }
 
 // Blocks are the step's chosen blocks in run order.
@@ -114,6 +117,9 @@ type Options struct {
 	Approve func(steps []*Step) bool
 	Confirm func(step *Step, b *Block) bool
 	Fixer   Fixer
+	// Tracker, when set, is told before a step's install block first runs
+	// and when that step ends, to record what the step changed.
+	Tracker Tracker
 	// Attempts is how many fixes a step may get (default 3).
 	Attempts int
 	// Lock, when set, is the file where progress is written after each step.
@@ -149,6 +155,12 @@ type Fix struct {
 	Action string
 	Block  *installmd.Block
 	Note   string // for the report: what was done, or what the user must do
+}
+
+// Tracker records what steps change.
+type Tracker interface {
+	Before(ctx context.Context, s *Step)
+	After(ctx context.Context, s *Step, status Status)
 }
 
 // Fixer tries to repair a failed step.
@@ -194,7 +206,7 @@ func NewPlan(ctx context.Context, doc *installmd.Doc, o Options) (*Plan, error) 
 		if st.Unmet != nil {
 			continue
 		}
-		for kind, dst := range map[string]**Block{"detect": &st.Detect, "install": &st.Install, "verify": &st.Verify} {
+		for kind, dst := range map[string]**Block{"detect": &st.Detect, "install": &st.Install, "verify": &st.Verify, "uninstall": &st.Uninstall} {
 			b := s.Select(kind, o.Machine)
 			if b == nil {
 				continue
@@ -327,6 +339,10 @@ func runStep(ctx context.Context, s *Step, o Options, r StepResult) StepResult {
 				return r
 			}
 		}
+	}
+	if o.Tracker != nil {
+		o.Tracker.Before(ctx, s)
+		defer func() { o.Tracker.After(ctx, s, r.Status) }()
 	}
 	install := s.Install
 	for attempt := 1; ; attempt++ {

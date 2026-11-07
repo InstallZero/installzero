@@ -168,7 +168,7 @@ func Parse(text string) *Doc {
 var (
 	endsExit0  = psrx.MustCompile(`(?m)^\s*exit\s+0\s*\z`)
 	canFail    = psrx.MustCompile(`\b(if|throw|exit\s+[1-9])\b`)
-	knownKinds = []string{"requires", "detect", "install", "verify"}
+	knownKinds = []string{"requires", "detect", "install", "verify", "uninstall"}
 	knownShell = []string{"powershell", "pwsh", "bash", "sh"}
 )
 

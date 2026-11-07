@@ -16,7 +16,9 @@ import (
 	"github.com/InstallZero/installzero/internal/installmd"
 	"github.com/InstallZero/installzero/internal/output"
 	"github.com/InstallZero/installzero/internal/runner"
+	"github.com/InstallZero/installzero/internal/state"
 	"github.com/InstallZero/installzero/internal/target/wsl"
+	"github.com/InstallZero/installzero/internal/track"
 )
 
 // stdin is where approvals are read; tests replace it.
@@ -32,6 +34,7 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	distro := fs.String("wsl", "", "install into this WSL distro (blocks run inside it as root)")
 	planOnly := fs.Bool("plan", false, "show the steps, their blocks and tiers for this machine, and run nothing")
 	yes := fs.Bool("y", false, "approve machine-wide steps without asking")
+	noTrack := fs.Bool("no-track", false, "do not record what the install changes (installzero uninstall then cannot undo it)")
 	var envs listFlag
 	fs.Var(&envs, "env", "NAME=VALUE set in every block (repeatable); variables the install.md requires are otherwise taken from this environment or asked for")
 	// Flags may come after the path too.
@@ -157,6 +160,28 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 		return *yes || ask(stdout, in, "Run it? [y/N] ")
 	}
 	o.Lock = lock
+	if !*noTrack {
+		tgt := "local"
+		if *distro != "" {
+			tgt = "wsl:" + *distro
+		}
+		sd, err := state.Dir()
+		if err == nil {
+			var rec *track.Recorder
+			rec, err = track.NewRecorder(o.Exec, track.Store{Dir: sd}, name, tgt, o.Machine.OS, o.Dir, string(body))
+			if err == nil {
+				rec.Warn = func(s string) { fmt.Fprintln(stdout, "  warning: "+s) }
+				if rec.Record.Lock, err = filepath.Abs(lock); err != nil {
+					rec.Record.Lock = lock
+				}
+				o.Tracker = stepTracker{rec}
+			}
+		}
+		if err != nil {
+			fmt.Fprintf(stderr, "cannot record this install for uninstall: %v\n", err)
+			return 1
+		}
+	}
 	o.Events = func(e runner.Event) {
 		switch e.Kind {
 		case "step":
@@ -185,6 +210,9 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	}
 	if rep.OK {
 		fmt.Fprintf(stdout, "\n%s is installed. Progress is in %s.\n", name, lock)
+		if o.Tracker != nil {
+			fmt.Fprintf(stdout, "installzero uninstall %s undoes it.\n", name)
+		}
 		return 0
 	}
 	for _, s := range rep.Steps {
@@ -195,6 +223,25 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stdout, "\nThe install stopped. Fix the problem and run installzero install again: steps that are done are detected and skipped. Progress is in %s.\n", lock)
 	return 1
+}
+
+// stepTracker records each step's changes for installzero uninstall.
+type stepTracker struct{ rec *track.Recorder }
+
+func (t stepTracker) Before(ctx context.Context, s *runner.Step) {
+	t.rec.Before(ctx, s.ID, s.Highest() == "system")
+}
+
+func (t stepTracker) After(ctx context.Context, s *runner.Step, status runner.Status) {
+	var u *track.Block
+	if s.Uninstall != nil {
+		u = &track.Block{Shell: s.Uninstall.Shell, Code: s.Uninstall.Code}
+	}
+	code := ""
+	if s.Install != nil {
+		code = s.Install.Code
+	}
+	t.rec.After(ctx, s.ID, s.Title, string(status), code, u)
 }
 
 func printPlan(w io.Writer, p *runner.Plan) {

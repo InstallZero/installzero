@@ -62,7 +62,7 @@ function Test-InstallMd($Doc) {
         if ($kinds -notcontains 'verify') { $problems.Add("step $($s.Number) ($($s.Id)) has no verify block") }
         if ($kinds -notcontains 'install' -and $kinds -notcontains 'detect') { $problems.Add("step $($s.Number) ($($s.Id)) has neither install nor detect") }
         foreach ($b in $s.Blocks) {
-            if ($b.Kind -notin 'requires', 'detect', 'install', 'verify') { $problems.Add("step $($s.Number) ($($s.Id)): unknown block kind '$($b.Kind)'") }
+            if ($b.Kind -notin 'requires', 'detect', 'install', 'verify', 'uninstall') { $problems.Add("step $($s.Number) ($($s.Id)): unknown block kind '$($b.Kind)'") }
             if ($b.Kind -ne 'requires' -and $b.Shell -and $b.Shell -notin 'powershell', 'pwsh', 'bash', 'sh') { $problems.Add("step $($s.Number) ($($s.Id)): unknown shell '$($b.Shell)'") }
             if ($b.Kind -ne 'requires' -and -not $b.Code) { $problems.Add("step $($s.Number) ($($s.Id)): empty $($b.Kind) block") }
             if ($b.Kind -in 'detect', 'verify' -and $b.Code -match '(?m)^\s*exit\s+0\s*\z' -and $b.Code -notmatch '\b(if|throw|exit\s+[1-9])\b') {
