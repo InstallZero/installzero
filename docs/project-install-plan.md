@@ -3,7 +3,8 @@
 Status: plan, not started. Written 2026-11-07. Builds on
 `docs/agentic-installer-split-plan.md` (engine, catalog, records),
 `docs/go-port-plan.md` (phase 5, the installer agent) and
-`agent/INSTALL-MD.md` (the install.md format).
+`agent/INSTALL-MD.md` (the install.md format). How the agent does the work
+in each mode (probe, install, review) is in `docs/install-harness-plan.md`.
 
 ## Goal
 

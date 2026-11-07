@@ -24,6 +24,7 @@ import (
 	"github.com/InstallZero/installzero/agent"
 	"github.com/InstallZero/installzero/doctor"
 	"github.com/InstallZero/installzero/internal/psrx"
+	"github.com/InstallZero/installzero/internal/readonly"
 )
 
 // Tiers.
@@ -71,12 +72,109 @@ var projectCommands = psrx.MustCompile(`(?i)^(git|docker|docker-compose|python|p
 var (
 	drivePath = psrx.MustCompileCase(`(?i)(?<![\w/])([a-z]:[\\/][^\s'"` + "`" + `|;,)]*)`)
 	envPath   = psrx.MustCompileCase(`(?i)(\$env:(USERPROFILE|APPDATA|LOCALAPPDATA|ProgramFiles|ProgramData|SystemRoot|windir|TEMP)|%(USERPROFILE|APPDATA|LOCALAPPDATA|ProgramFiles|ProgramData|SystemRoot|windir|TEMP)%|~[\\/])[^\s'"` + "`" + `|;,)]*`)
-	bashWord  = psrx.MustCompileCase(`(?m)(^|[;&|]\s*)([\w./-]+)`)
 	envPrefix = psrx.MustCompile(`^\$env:(\w+)`)
 	pctPrefix = psrx.MustCompile(`^%(\w+)%`)
 )
 
 var bashBuiltins = []string{"cd", "export", "source", ".", "set", "echo", "test", "[", "true", "false"}
+
+// Bash only: destructive and machine-wide commands of Linux and macOS.
+var (
+	neverUnix = []struct {
+		re  *psrx.Regexp
+		why string
+	}{
+		{psrx.MustCompile(`(?i)\b(mkfs(\.\w+)?|wipefs|fdisk|sfdisk|parted|sgdisk)\b|\bdd\b[^;&|\n]*\bof=/dev/`), "changes disks or partitions"},
+		{psrx.MustCompile(`(?i)\brm\s+(-\w+\s+)*-\w*r\w*\s+(-\w+\s+)*(/(etc|usr|var|boot|lib|lib64|bin|sbin|opt|home|root|srv)|~|\$HOME|\$\{HOME\})/?(\s|$)`), "deletes a system or home folder"},
+		{psrx.MustCompile(`(?i)\bchmod\s+-R\s+\S+\s+/(\s|$)|\bchown\s+-R\s+\S+\s+/(\s|$)`), "changes permissions of the whole file system"},
+		{psrx.MustCompile(`(?i)(^|[;&|]\s*)(sudo\s+)?(reboot|poweroff|halt)\b|\bshutdown\s+(-[rhP]|now)|\bsystemctl\s+(reboot|poweroff|halt)\b`), "restarts or shuts down the machine; ask the user to do it"},
+		{psrx.MustCompile(`:\(\)\s*\{`), "a fork bomb"},
+	}
+	systemUnix = []*psrx.Regexp{
+		psrx.MustCompile(`(?i)\b(curl|wget)\b[^|\n]*\|\s*(sudo\s+)?(ba|z|da)?sh\b`),
+		psrx.MustCompile(`(?i)\bsystemctl\s+(--\S+\s+)*(enable|disable|start|stop|restart|reload|mask|unmask|daemon-reload|edit|set-default|isolate|link)\b`),
+		psrx.MustCompile(`(?i)\bservice\s+\S+\s+(start|stop|restart|reload)\b`),
+		psrx.MustCompile(`(?i)\b(useradd|usermod|userdel|groupadd|groupdel|adduser|addgroup|deluser|passwd|chpasswd|visudo|chsh)\b`),
+		psrx.MustCompile(`(?i)\b(update-alternatives|ldconfig|update-ca-certificates|locale-gen|modprobe|ufw|iptables|ip6tables|nft|firewall-cmd|flatpak)\b|\bsysctl\s+-w\b|\b(timedatectl|hostnamectl)\s+set`),
+		psrx.MustCompile(`(?i)\b(gem|cargo|go|pipx)\s+install\b|\bnpm\s+(i|install)\b[^;&|\n]*\s(-g|--global)\b`),
+		psrx.MustCompile(`(?i)\bmake\b[^;&|\n]*\binstall\b`),
+		psrx.MustCompile(`(?i)\bcrontab\s+(?!-l\b)`),
+	}
+	unixPath    = psrx.MustCompileCase(`(?<=^|[\s=('"<>])(~(/[^\s'"` + "`" + `|;&)<>]*)?|\$\{?HOME\}?(/[^\s'"` + "`" + `|;&)<>]*)?|/[^\s'"` + "`" + `|;&)<>]*)`)
+	safeUnix    = psrx.MustCompileCase(`^(/dev/(null|stdout|stderr|stdin|zero|u?random|tty|fd/\d+)|/tmp(/.*)?|/var/tmp(/.*)?)$`)
+	binDir      = psrx.MustCompileCase(`^/(usr/(local/)?)?s?bin/[^/]+$`)
+	continued   = psrx.MustCompile(`\\\r?\n`)
+	shellWord   = psrx.MustCompile(`^(ba|z|da)?sh$`)
+	keywordWord = psrx.MustCompile(`^(if|then|else|elif|fi|for|while|until|do|done|in|case|esac|function|time|!|\{|\}|local|declare|readonly|nohup|exec|command|env|xargs)$`)
+	assignWord  = psrx.MustCompile(`^\w+=`)
+	venvPath    = psrx.MustCompile(`(venv|\.venv|env)[\\/]`)
+)
+
+// insideUnix reports whether a Unix path is inside one of the roots (Unix
+// roots only); ~ and $HOME count as outside, since the home folder belongs
+// to the user, not the project.
+func insideUnix(p string, roots []string) bool {
+	if !strings.HasPrefix(p, "/") {
+		return false
+	}
+	full := cleanUnix(p)
+	for _, r := range roots {
+		if !strings.HasPrefix(r, "/") {
+			continue
+		}
+		root := cleanUnix(r)
+		if full == root || strings.HasPrefix(full, strings.TrimSuffix(root, "/")+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func cleanUnix(p string) string {
+	var parts []string
+	for _, s := range strings.Split(p, "/") {
+		switch s {
+		case "", ".":
+		case "..":
+			if len(parts) > 0 {
+				parts = parts[:len(parts)-1]
+			}
+		default:
+			parts = append(parts, s)
+		}
+	}
+	return "/" + strings.Join(parts, "/")
+}
+
+// words splits a simple command into words, keeping quoted parts together.
+func words(cmd string) []string {
+	var out []string
+	var cur strings.Builder
+	var q rune
+	for _, ch := range cmd {
+		switch {
+		case q != 0:
+			if ch == q {
+				q = 0
+			} else {
+				cur.WriteRune(ch)
+			}
+		case ch == '\'' || ch == '"':
+			q = ch
+		case ch == ' ' || ch == '\t':
+			if cur.Len() > 0 {
+				out = append(out, cur.String())
+				cur.Reset()
+			}
+		default:
+			cur.WriteRune(ch)
+		}
+	}
+	if cur.Len() > 0 {
+		out = append(out, cur.String())
+	}
+	return out
+}
 
 // commandPaths are the Windows paths a command names: drive paths and
 // paths under the user's or the system's folders.
@@ -147,47 +245,88 @@ func isPowerShell(shell string) bool {
 }
 
 // Bash returns the tier of a bash command. roots are the folders
-// project-tier changes may touch.
+// project-tier changes may touch (Unix paths, or Windows ones for bash on
+// Windows).
+//
+// Unlike agent/Policy.ps1, which only met bash in Windows installs, this
+// knows Linux and macOS: read-only commands are read, Unix paths outside
+// the roots and Linux system commands are system, and programs inside the
+// project (./configure, venv/bin/pip) are project.
 func Bash(command string, roots []string) Result {
-	if r, ok := neverOrSystem(command, roots); ok {
+	c := continued.Replace(command, " ")
+	for _, n := range neverUnix {
+		if n.re.Match(c) {
+			return Result{Never, n.why}
+		}
+	}
+	if r, ok := neverTier(c); ok {
 		return r
 	}
-	for _, g := range bashWord.AllGroups(command) {
-		w := g[2]
-		builtin := false
-		for _, b := range bashBuiltins {
-			if strings.EqualFold(w, b) {
-				builtin = true
-			}
-		}
-		if !projectCommands.Match(w) && !builtin {
-			return Result{System, fmt.Sprintf("'%s' is not a known project-folder command", w)}
-		}
+	if readonly.Bash(c) == "" {
+		return Result{Read, "read-only"}
 	}
-	return Result{Project, "changes only the install folder"}
-}
-
-// neverOrSystem applies the pattern and path rules shared by every shell
-// (after the read-only check for PowerShell).
-func neverOrSystem(command string, roots []string) (Result, bool) {
-	if r, ok := neverTier(command); ok {
-		return r, true
-	}
-	for _, re := range system {
-		if g := re.Groups(command); g != nil {
-			return Result{System, fmt.Sprintf("machine-wide change (%s)", strings.TrimSpace(g[0]))}, true
+	for _, re := range append(append([]*psrx.Regexp{}, system...), systemUnix...) {
+		if g := re.Groups(c); g != nil {
+			return Result{System, fmt.Sprintf("machine-wide change (%s)", strings.TrimSpace(g[0]))}
 		}
 	}
 	var outside []string
-	for _, p := range commandPaths(command) {
+	for _, p := range commandPaths(c) {
 		if !insideFolder(p, roots) {
 			outside = append(outside, p)
 		}
 	}
-	if len(outside) > 0 {
-		return Result{System, "touches paths outside the install folder: " + strings.Join(outside, ", ")}, true
+	venv := venvPath.Match(c)
+	for _, seg := range readonly.SplitBash(c) {
+		ws := words(seg)
+		i := 0
+		for i < len(ws) && (keywordWord.Match(ws[i]) || assignWord.Match(ws[i])) {
+			i++
+		}
+		if i >= len(ws) {
+			continue
+		}
+		name, args := ws[i], ws[i+1:]
+		for _, a := range args {
+			for _, g := range unixPath.AllGroups(a) {
+				if p := g[1]; !safeUnix.Match(p) && !insideUnix(p, roots) {
+					outside = append(outside, p)
+				}
+			}
+		}
+		switch {
+		case strings.HasPrefix(name, "/") && insideUnix(name, roots):
+			continue
+		case strings.HasPrefix(name, "/") && binDir.Match(name):
+			name = name[strings.LastIndex(name, "/")+1:]
+		case strings.HasPrefix(name, "/") || strings.HasPrefix(name, "~") || strings.HasPrefix(name, "$"):
+			return Result{System, fmt.Sprintf("runs a program outside the install folder (%s)", name)}
+		case strings.Contains(name, "/"):
+			continue
+		}
+		if shellWord.Match(name) {
+			if len(args) == 0 || strings.HasPrefix(args[0], "-") {
+				return Result{System, fmt.Sprintf("'%s' runs a script from its input", name)}
+			}
+			continue
+		}
+		builtin := false
+		for _, b := range bashBuiltins {
+			if strings.EqualFold(name, b) {
+				builtin = true
+			}
+		}
+		if !builtin && !projectCommands.Match(name) {
+			return Result{System, fmt.Sprintf("'%s' is not a known project-folder command", name)}
+		}
+		if (name == "pip" || name == "pip3") && !venv {
+			return Result{System, "pip outside a virtual environment installs for the whole machine; use the venv's pip"}
+		}
 	}
-	return Result{}, false
+	if len(outside) > 0 {
+		return Result{System, "touches paths outside the install folder: " + strings.Join(outside, ", ")}
+	}
+	return Result{Project, "changes only the install folder"}
 }
 
 func neverTier(command string) (Result, bool) {
@@ -214,7 +353,9 @@ func Classify(ctx context.Context, shell string, roots []string, commands ...str
 		return out, nil
 	}
 	b64 := func(s string) string { return "'" + base64.StdEncoding.EncodeToString([]byte(s)) + "'" }
-	dec := func(v string) string { return "([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(" + v + ")))" }
+	dec := func(v string) string {
+		return "([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(" + v + ")))"
+	}
 	var script strings.Builder
 	script.WriteString(doctor.ReadOnlyPS)
 	script.WriteString("\n")

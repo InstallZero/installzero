@@ -19,10 +19,7 @@ type tierCase struct {
 }
 
 func TestBashFixtures(t *testing.T) {
-	for _, c := range fixture.Load[tierCase](t, "policy/tiers.json") {
-		if isPowerShell(c.Shell) {
-			continue
-		}
+	for _, c := range fixture.Load[tierCase](t, "policy/bash.json") {
 		if got := Bash(c.Command, c.Roots); got != (Result{c.Tier, c.Reason}) {
 			t.Errorf("%q\n  got  %s: %s\n  want %s: %s", fixture.Short(c.Command), got.Tier, got.Reason, c.Tier, c.Reason)
 		}
