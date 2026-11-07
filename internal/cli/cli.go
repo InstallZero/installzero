@@ -57,6 +57,7 @@ const commandList = `
   capture -- <command>                    run a command and record its failure
   init                                    write a starter install.json
   probe --wsl <distro> [--target <path>]  write an install.md from a running install
+  install [install.md] [--wsl <distro>]   run an install.md: detect, install, verify each step
 
 add takes --list to show phases and install nothing. remove takes --data to
 include data folders. -y skips prompts, --phase <id> limits the run to one
@@ -94,6 +95,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return cmdInit(args[1:], stdout, stderr)
 	case "probe":
 		return cmdProbe(args[1:], stdout, stderr)
+	case "install":
+		return cmdInstall(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command %q\n\n", args[0])
 		fmt.Fprint(stderr, usageText()+commandList)

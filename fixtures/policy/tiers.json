@@ -50,6 +50,7 @@
     {"command": "Get-Process | Where-Object { $_.Name -eq 'x' } | Stop-Process", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "system", "reason": "'Stop-Process' is not a known project-folder command"},
     {"command": "if (-not (Test-Path .venv)) { python -m venv .venv }", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "project", "reason": "changes only the install folder"},
     {"command": "foo-unknown-tool --do-things", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "system", "reason": "'foo-unknown-tool' is not a known project-folder command"},
-    {"command": "Get-ChildItem (", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "system", "reason": "does not parse: An expression was expected after '('."}
+    {"command": "Get-ChildItem (", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "system", "reason": "does not parse: An expression was expected after '('."},
+    {"command": "New-Item -ItemType Directory data | Out-Null\n1..3 | ForEach-Object { \"part $_\" } | Sort-Object\nWrite-Error \"could not find libfoo\"", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "project", "reason": "changes only the install folder"}
   ]
 }

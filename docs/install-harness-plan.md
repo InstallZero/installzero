@@ -1,6 +1,7 @@
 # InstallZero: a harness built for installation work
 
-Status: plan, not started. Written 2026-11-07. Part of
+Status: install mode's runner works without a model (see Progress).
+Written 2026-11-07. Part of
 `docs/project-install-plan.md` (which says what the user and the repo owner
 run); this document says how the agent inside does the work.
 
@@ -180,3 +181,22 @@ probe benchmark already uses:
 4. **Review**: lint, package-name lookups, finding episodes, sandbox test.
 5. **Install and review benchmarks** on the eval console.
 6. **ft-5** on episode data from all three modes.
+
+## Progress
+
+- 2026-11-07: bash policy rules for Linux (`fixtures/policy/bash.json`).
+  `internal/runner`, `internal/output` and `installzero install
+  [install.md] [--wsl <distro>] [--plan] [-y] [--env NAME=VALUE]`: plan
+  with tiers, one approval for machine-wide steps, detect, install and
+  verify in code, required variables (`${NAME:?}`) asked for and hidden in
+  the output, `lock.json` per step, rerun skips steps whose detect and
+  verify pass. No fixer yet.
+- First replay: gemini-4-argon's Jenkins install.md on a clean Ubuntu
+  24.04 distro. Steps 1 to 5 installed and verified in about three
+  minutes. Step 6 failed: the apt package starts Jenkins on port 8080,
+  which was taken, so it failed five times and systemd refused the
+  restart on port 8095 (start limit). `systemctl reset-failed` fixed it;
+  the journal held the cause. This is the case fix episodes are for:
+  the runner's summary of the failed block said only "see journalctl", so
+  a fix episode needs read tools (journalctl, ss) and not just the
+  block's output.

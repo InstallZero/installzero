@@ -56,7 +56,8 @@ py -3.12 -c "import sys; print(sys.version)"
     Keys: `os` (windows, linux, macos), `arch` (x64, arm64), `gpu` (nvidia,
     amd, intel, apple, none, any), `min_ram_gb`, `min_disk_gb`,
     `min_driver` (NVIDIA driver version). Lists are comma separated.
-  - `detect`: exits 0 when the step is already done (then it is skipped).
+  - `detect`: exits 0 when the step is already done (then it is skipped,
+    once its `verify` passes too).
   - `install`: does the step.
   - `verify`: exits 0 when the step worked. Required for every step.
   - Shells: `powershell` (default on Windows) or `bash`.

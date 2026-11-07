@@ -60,6 +60,8 @@
     {"command": "DEBIAN_FRONTEND=noninteractive apt-get install -y nginx", "roots": ["/home/u/app"], "tier": "system", "reason": "machine-wide change (apt-get)"},
     {"command": "FLASK_APP=app.py flask db upgrade", "roots": ["/home/u/app"], "tier": "system", "reason": "'flask' is not a known project-folder command"},
     {"command": "crontab -l", "roots": ["/home/u/app"], "tier": "read", "reason": "read-only"},
-    {"command": "crontab /home/u/app/cron.txt", "roots": ["/home/u/app"], "tier": "system", "reason": "machine-wide change (crontab)"}
+    {"command": "crontab /home/u/app/cron.txt", "roots": ["/home/u/app"], "tier": "system", "reason": "machine-wide change (crontab)"},
+    {"command": "# set up the venv\npython3 -m venv .venv  # inside the project", "roots": ["/home/u/app"], "tier": "project", "reason": "changes only the install folder"},
+    {"command": "# needs root\napt-get install -y nginx", "roots": ["/home/u/app"], "tier": "system", "reason": "machine-wide change (apt-get)"}
   ]
 }
