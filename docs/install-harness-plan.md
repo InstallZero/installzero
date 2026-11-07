@@ -225,3 +225,19 @@ probe benchmark already uses:
   account backup files. The first version restored /etc files the
   upgraded ca-certificates package had rewritten, leaving its trust store
   inconsistent; that is what the package-script rule is for.
+- 2026-11-07: port conflicts (`internal/ports`). install.md front matter
+  `ports: web=8095` with `{{PORT_WEB}}` in blocks; before a run declared
+  ports are checked and a taken one moves to the next free port (the
+  choice is kept in the install record, and a finished install's own
+  listener is not a conflict on rerun). Ports used literally in blocks
+  only get a warning. Listeners come from `ss` or Get-NetTCPConnection,
+  plus Windows' for a WSL target in mirrored networking (shared ports).
+  The first fixer: a failed step's output and the journals of the units
+  it starts are searched for bind errors (Java, nginx, Postgres, Node,
+  Python, Docker, .NET); when the port is free now, held by the step's
+  own unit, or not one the install uses (a package's default, as with
+  Jenkins), the units are reset-failed and the step retried; when
+  something else on the target holds a port the install needs, the user
+  is asked whether to stop its unit; otherwise the step stops with who
+  holds the port. Tested against the Jenkins journal and on Windows with
+  a held port; not yet replayed in WSL (the replay image was gone).

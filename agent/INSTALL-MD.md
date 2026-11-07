@@ -70,6 +70,12 @@ py -3.12 -c "import sys; print(sys.version)"
   a generic block can sit next to specific ones.
 - **Placeholders**: `{{INSTALL_DIR}}` (the install folder) and
   `{{REPO_DIR}}` (`{{INSTALL_DIR}}\<name>`) are replaced before running.
+- **Ports**: a service's listening ports go in the front matter as
+  `ports: web=8188, api=8189` and in blocks as `{{PORT_WEB}}`,
+  `{{PORT_API}}`, never as literal numbers. When another program already
+  holds one, InstallZero uses the next free port instead and says so.
+  Configure the port explicitly (environment, config file, systemd drop-in,
+  `-p`) rather than relying on the software's default.
 - **Secrets**: never written into the file. Name the variable and where the
   user gets it (`HF_TOKEN: create at https://huggingface.co/settings/tokens`).
 

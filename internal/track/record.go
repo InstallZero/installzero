@@ -17,19 +17,21 @@ import (
 // (<state>/installs/<id>.json), not in the install folder, so it survives
 // the uninstall it drives.
 type Record struct {
-	ID      string        `json:"id"`
-	Name    string        `json:"name"`
-	Target  string        `json:"target"` // local, or wsl:<distro>
-	OS      string        `json:"os"`     // windows, linux, macos
-	Dir     string        `json:"dir"`
-	DirNew  bool          `json:"dir_new"`        // the install folder did not exist before
-	Doc     string        `json:"doc"`            // the install.md it came from
-	Lock    string        `json:"lock,omitempty"` // installzero install's progress file, on this machine
-	Created time.Time     `json:"created"`
-	Updated time.Time     `json:"updated"`
-	Runs    int           `json:"runs"`
-	Steps   []*StepRecord `json:"steps"`
-	Backups []string      `json:"backups,omitempty"` // archives of /etc on the target, one per run with a machine-wide step
+	ID      string         `json:"id"`
+	Name    string         `json:"name"`
+	Target  string         `json:"target"` // local, or wsl:<distro>
+	OS      string         `json:"os"`     // windows, linux, macos
+	Dir     string         `json:"dir"`
+	DirNew  bool           `json:"dir_new"`        // the install folder did not exist before
+	Doc     string         `json:"doc"`            // the install.md it came from
+	Lock    string         `json:"lock,omitempty"` // installzero install's progress file, on this machine
+	Created time.Time      `json:"created"`
+	Updated time.Time      `json:"updated"`
+	Runs    int            `json:"runs"`
+	Steps   []*StepRecord  `json:"steps"`
+	Backups []string       `json:"backups,omitempty"` // archives of /etc on the target, one per run with a machine-wide step
+	Ports   map[string]int `json:"ports,omitempty"`   // the declared ports, as chosen
+	OK      bool           `json:"ok,omitempty"`      // the last run finished every step
 }
 
 // StepRecord is one step that installzero ran (not one it found done).
