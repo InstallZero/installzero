@@ -55,8 +55,9 @@ function ConvertTo-SftArgs($Raw) {
 }
 
 # One run -> training examples. Each is the conversation as the probe would
-# have sent it at that turn (oldest tool output trimmed to fit $MaxChars,
-# exactly as Compress-AgentMessages does during a run) followed by the
+# have sent it at that turn (oldest tool output trimmed, and whole turns
+# dropped, to fit $MaxChars, exactly as Compress-AgentMessages does during a
+# run) followed by the
 # model's reply there. Replies whose calls repeated an earlier call stay in
 # later context but are not targets.
 # Returns @{ Examples = list of @{ Turn; Chars; Line (JSON) }; Skipped = @{ reason = n }; Turns }.

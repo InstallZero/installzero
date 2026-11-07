@@ -146,6 +146,56 @@ function Compress-AgentMessages($Messages, [int]$MaxChars = 80000, [int]$Keep = 
         }
         $total -= ($before - (& $size $m))
     }
+    if ($total -gt $MaxChars) { Remove-AgentTurns $Messages $MaxChars }
+}
+
+# Many small calls leave nothing to trim: drop the oldest whole turns (an
+# assistant message and everything up to the next one, so no call loses its
+# result) and list their calls after the task, the newest 40 of them.
+# $Messages must be an ArrayList; the latest turn is kept.
+function Remove-AgentTurns($Messages, [int]$MaxChars) {
+    $header = Get-PromptMessage 'loop_dropped_turns'
+    $more = (Get-PromptMessage 'loop_dropped_more' @{ count = '{{count}}' }) -split '\{\{count\}\}', 2
+    $task = "$($Messages[1].content)"
+    $lines = [Collections.Generic.List[string]]::new(); $notListed = 0
+    $at = $task.IndexOf("`n`n$header", [StringComparison]::Ordinal)
+    if ($at -ge 0) {
+        foreach ($l in $task.Substring($at + 2 + $header.Length).Split("`n")) {
+            if (-not $l) { continue }
+            if ($l.Length -gt $more[0].Length + $more[1].Length -and $l.StartsWith($more[0], [StringComparison]::Ordinal) -and $l.EndsWith($more[1], [StringComparison]::Ordinal)) {
+                $n = $l.Substring($more[0].Length, $l.Length - $more[0].Length - $more[1].Length)
+                if ($n -cmatch '^[0-9]+$') { $notListed = [int]$n; continue }
+            }
+            $lines.Add($l)
+        }
+        $task = $task.Substring(0, $at)
+    }
+    while ((Measure-AgentMessages $Messages) -gt $MaxChars) {
+        $end = 3
+        while ($end -lt $Messages.Count -and $Messages[$end].role -ne 'assistant') { $end++ }
+        if ($end -ge $Messages.Count) { break }
+        $turn = $Messages.GetRange(2, $end - 2)
+        foreach ($m in $turn) {
+            foreach ($c in @($m.tool_calls | Where-Object { $_ })) {
+                $out = @($turn | Where-Object { $_.role -eq 'tool' -and $_.tool_call_id -and $_.tool_call_id -ceq $c.id })
+                $lines.Add((Format-AgentDroppedCall $c $(if ($out.Count) { $out[0].content } else { $null })))
+            }
+        }
+        $Messages.RemoveRange(2, $end - 2)
+        if ($lines.Count -gt 40) { $notListed += $lines.Count - 40; $lines.RemoveRange(0, $lines.Count - 40) }
+        $block = @($header) + @(if ($notListed) { $more[0] + $notListed + $more[1] }) + @($lines)
+        $Messages[1].content = $task + "`n`n" + ($block -join "`n")
+    }
+}
+
+# One line per dropped call: name, arguments without the purpose, and the
+# first line of its result.
+function Format-AgentDroppedCall($Call, $Output) {
+    $a = "$($Call.function.arguments)" -creplace ',[ \t\r\n]*"purpose"[ \t\r\n]*:[ \t\r\n]*"(?:[^"\\]|\\.)*"', '' -creplace '"purpose"[ \t\r\n]*:[ \t\r\n]*"(?:[^"\\]|\\.)*"[ \t\r\n]*,?', '' -creplace '[ \t\r\n]+', ' '
+    $first = ''
+    if ($null -ne $Output) { foreach ($l in "$Output".Split("`n")) { $t = $l.Trim([char[]]" `t`r"); if ($t) { $first = $t; break } } }
+    $cut = { param([string]$s, [int]$max) if ($s.Length -le $max) { $s } else { $s.Substring(0, $max) + '...' } }
+    "- $($Call.function.name) $(& $cut $a 150) -> $(if ($first) { & $cut $first 100 } else { '(no output)' })"
 }
 
 # $Dispatch: scriptblock ($name, $args) -> output text. Returns the run's

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -18,60 +19,89 @@ func fixtureText(n, length int) string {
 	return strings.Repeat(unit, int(math.Ceil(float64(length)/6))+1)[:length]
 }
 
+// fixtureBody is a fixture field that is either a character count (filled by
+// fixtureText) or the literal text.
+func fixtureBody(n int, raw json.RawMessage) *string {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil
+	}
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		return llm.Text(s)
+	}
+	var length int
+	if json.Unmarshal(raw, &length) == nil {
+		return llm.Text(fixtureText(n, length))
+	}
+	return nil
+}
+
 func TestCompressFixtures(t *testing.T) {
-	type changed struct {
-		Index   int
-		Content *string
-		Args    []*string
+	type kept struct {
+		Index   int       `json:"index"`
+		Content *string   `json:"content"`
+		Args    []*string `json:"args"`
 	}
 	for ci, c := range fixture.Load[struct {
 		Messages []struct {
 			Role    string
-			Content *int
-			Args    []int
+			Content json.RawMessage
+			Args    []json.RawMessage
+			Name    string
 		}
 		MaxChars int `json:"max_chars"`
 		Keep     int
-		Changed  []changed
+		Kept     []kept
 	}](t, "loops/compress.json") {
 		var ms, before []llm.Message
+		lastAssistant, toolK := -1, 0
 		for i, m := range c.Messages {
-			msg := llm.Message{Role: m.Role}
-			if m.Content != nil {
-				msg.Content = llm.Text(fixtureText(i+1, *m.Content))
+			msg := llm.Message{Role: m.Role, Content: fixtureBody(i+1, m.Content), ReasoningContent: strconv.Itoa(i)}
+			name := m.Name
+			if name == "" {
+				name = "x"
 			}
 			for j, n := range m.Args {
-				msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{ID: fmt.Sprintf("c%d-%d", i+1, j+1), Type: "function", Function: llm.FunctionCall{Name: "x", Arguments: llm.Arguments(fixtureText((i+1)*10+j+1, n))}})
+				arg := ""
+				if b := fixtureBody((i+1)*10+j+1, n); b != nil {
+					arg = *b
+				}
+				msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{ID: fmt.Sprintf("c%d-%d", i+1, j+1), Type: "function", Function: llm.FunctionCall{Name: name, Arguments: llm.Arguments(arg)}})
+			}
+			if m.Role == "assistant" {
+				lastAssistant, toolK = len(ms), 0
+			} else if m.Role == "tool" && lastAssistant >= 0 {
+				toolK++
+				if calls := ms[lastAssistant].ToolCalls; toolK <= len(calls) {
+					msg.ToolCallID = calls[toolK-1].ID
+				}
 			}
 			ms = append(ms, msg)
 			cp := msg
 			cp.ToolCalls = append([]llm.ToolCall(nil), msg.ToolCalls...)
 			before = append(before, cp)
 		}
-		compress(ms, c.MaxChars, c.Keep)
-		var got []changed
-		for i := range ms {
-			ch := changed{Index: i, Args: []*string{}}
-			diff := false
-			if ms[i].ContentText() != before[i].ContentText() {
-				ch.Content = llm.Text(ms[i].ContentText())
-				diff = true
+		ms = compress(ms, c.MaxChars, c.Keep)
+		var got []kept
+		for _, m := range ms {
+			idx, _ := strconv.Atoi(m.ReasoningContent)
+			b := before[idx]
+			k := kept{Index: idx, Args: []*string{}}
+			if m.ContentText() != b.ContentText() {
+				k.Content = llm.Text(m.ContentText())
 			}
-			for j := range ms[i].ToolCalls {
-				if a := string(ms[i].ToolCalls[j].Function.Arguments); a != string(before[i].ToolCalls[j].Function.Arguments) {
-					ch.Args = append(ch.Args, llm.Text(a))
-					diff = true
+			for j := range m.ToolCalls {
+				if a := string(m.ToolCalls[j].Function.Arguments); a != string(b.ToolCalls[j].Function.Arguments) {
+					k.Args = append(k.Args, llm.Text(a))
 				} else {
-					ch.Args = append(ch.Args, nil)
+					k.Args = append(k.Args, nil)
 				}
 			}
-			if diff {
-				got = append(got, ch)
-			}
+			got = append(got, k)
 		}
 		g, _ := json.Marshal(got)
-		w, _ := json.Marshal(c.Changed)
-		if string(g) != string(w) && !(len(got) == 0 && len(c.Changed) == 0) {
+		w, _ := json.Marshal(c.Kept)
+		if string(g) != string(w) {
 			t.Errorf("case %d:\n  got  %s\n  want %s", ci+1, g, w)
 		}
 	}

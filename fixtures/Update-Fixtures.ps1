@@ -99,21 +99,23 @@ $files = @(
     @('loops\salvage.json', @('partial'), { param($c) [ordered]@{ content = Get-LoopSalvage $c.partial } }),
     @('loops\compress.json', @('messages', 'max_chars', 'keep'), {
         param($c)
-        $i = 0
-        $ms = @(foreach ($m in $c.messages) {
+        $i = 0; $call = $null; $k = 0
+        $text = { param($n, $v) if ($v -is [string]) { $v } else { New-FixtureText $n $v } }
+        $ms = [Collections.ArrayList]@(foreach ($m in $c.messages) {
             $i++
-            $h = @{ role = $m.role; content = $(if ($null -eq $m.content) { $null } else { New-FixtureText $i $m.content }) }
-            if ($m.args) { $j = 0; $h.tool_calls = @(foreach ($n in $m.args) { $j++; @{ id = "c$i-$j"; type = 'function'; function = @{ name = 'x'; arguments = (New-FixtureText ($i * 10 + $j) $n) } } }) }
+            $h = @{ role = $m.role; content = $(if ($null -eq $m.content) { $null } else { & $text $i $m.content }); fixture_index = $i - 1 }
+            if ($m.args) { $j = 0; $h.tool_calls = @(foreach ($n in $m.args) { $j++; @{ id = "c$i-$j"; type = 'function'; function = @{ name = $(if ($m.name) { $m.name } else { 'x' }); arguments = (& $text ($i * 10 + $j) $n) } } }) }
+            if ($m.role -eq 'assistant') { $call = $h; $k = 0 }
+            elseif ($m.role -eq 'tool' -and $call) { $k++; if ($k -le @($call.tool_calls).Count) { $h.tool_call_id = $call.tool_calls[$k - 1].id } }
             $h
         })
         $before = @($ms | ForEach-Object { [ordered]@{ content = $_.content; args = @($_.tool_calls | Where-Object { $_ } | ForEach-Object { $_.function.arguments }) } })
         Compress-AgentMessages $ms $c.max_chars $c.keep
-        $k = 0
-        [ordered]@{ changed = @(foreach ($m in $ms) {
-            $b = $before[$k]; $k++
+        [ordered]@{ kept = @(foreach ($m in $ms) {
+            $b = $before[$m.fixture_index]
             $args = @($m.tool_calls | Where-Object { $_ } | ForEach-Object { $_.function.arguments })
             $argsChanged = @(for ($x = 0; $x -lt $args.Count; $x++) { if ($args[$x] -cne $b.args[$x]) { $args[$x] } else { $null } })
-            if ($m.content -cne $b.content -or @($argsChanged | Where-Object { $_ }).Count) { [ordered]@{ index = $k - 1; content = $(if ($m.content -cne $b.content) { $m.content } else { $null }); args = $argsChanged } }
+            [ordered]@{ index = $m.fixture_index; content = $(if ($m.content -cne $b.content) { $m.content } else { $null }); args = $argsChanged }
         }) }
     }),
     @('installmd\docs.json', @('file'), {

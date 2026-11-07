@@ -34,6 +34,8 @@
   "loop_not_run": "\n\n[Not run from your last reply: {{calls}}. Make each call once.]",
   "loop_not_run_duplicates": "{{count}} exact duplicate calls",
   "loop_not_run_over_cap": "{{count}} calls beyond the limit of {{max}} per reply",
+  "loop_dropped_turns": "[Your earliest turns were removed to make room. The calls they made, oldest first, each with the first line of its result:]",
+  "loop_dropped_more": "- ({{count}} earlier calls not listed)",
   "loop_blocked_move_on": "{{count}} of your calls were not run because they repeat earlier calls whose result will not change. You already have those results: stop re-checking and move on, and write or revise the result with {{tools}} from what you know.",
   "loop_blocked_result_only": "{{count}} repeated calls have been blocked. For your next reply only {{tools}} are available: use them now with what you have found."
 }

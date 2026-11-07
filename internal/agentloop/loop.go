@@ -13,6 +13,7 @@ import (
 	"math"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -417,7 +418,7 @@ func (l *loop) turns(ctx context.Context) error {
 		}
 		forceResult = false
 		l.maxChars = l.budgetChars()
-		compress(l.messages, l.maxChars, 300)
+		l.messages = compress(l.messages, l.maxChars, 300)
 
 		var r *llm.Reply
 		attempt, parseFails, loopFails := 0, 0, 0
@@ -470,7 +471,7 @@ func (l *loop) turns(ctx context.Context) error {
 				}
 				if parseFails == 1 {
 					l.line("  The reply was cut off or unparseable: trimming the conversation to make room and retrying.")
-					compress(l.messages, roundInt(float64(l.maxChars)/2), 150)
+					l.messages = compress(l.messages, roundInt(float64(l.maxChars)/2), 150)
 				} else if parseFails == 2 {
 					l.line("  Still unparseable: asking for a short reply, with only finish offered.")
 					l.user(o.ParseFailureNudge)
@@ -743,8 +744,8 @@ func measureAll(ms []llm.Message) int {
 
 // compress trims the oldest tool outputs (and long tool-call arguments,
 // such as earlier drafts) until the conversation fits maxChars; the latest
-// message is kept.
-func compress(ms []llm.Message, maxChars, keep int) {
+// message is kept. When that is not enough, dropTurns removes whole turns.
+func compress(ms []llm.Message, maxChars, keep int) []llm.Message {
 	total := measureAll(ms)
 	for i := 2; i < len(ms)-1 && total > maxChars; i++ {
 		m := &ms[i]
@@ -760,6 +761,106 @@ func compress(ms []llm.Message, maxChars, keep int) {
 		}
 		total -= before - measure(*m)
 	}
+	if total > maxChars {
+		ms = dropTurns(ms, maxChars)
+	}
+	return ms
+}
+
+var (
+	purposeArg      = regexp.MustCompile(`,[ \t\r\n]*"purpose"[ \t\r\n]*:[ \t\r\n]*"(?:[^"\\]|\\.)*"`)
+	purposeArgFirst = regexp.MustCompile(`"purpose"[ \t\r\n]*:[ \t\r\n]*"(?:[^"\\]|\\.)*"[ \t\r\n]*,?`)
+	argSpaces       = regexp.MustCompile(`[ \t\r\n]+`)
+	digits          = regexp.MustCompile(`^[0-9]+$`)
+)
+
+// dropTurns is Remove-AgentTurns: many small calls leave nothing to trim, so
+// the oldest whole turns go (an assistant message and everything up to the
+// next one, so no call loses its result) and their calls are listed after
+// the task, the newest 40 of them. The latest turn is kept.
+func dropTurns(ms []llm.Message, maxChars int) []llm.Message {
+	header := say("loop_dropped_turns", nil)
+	more := strings.SplitN(say("loop_dropped_more", prompts.Values{"count": "{{count}}"}), "{{count}}", 2)
+	task := ms[1].ContentText()
+	var lines []string
+	notListed := 0
+	if at := strings.Index(task, "\n\n"+header); at >= 0 {
+		for _, l := range strings.Split(task[at+2+len(header):], "\n") {
+			if l == "" {
+				continue
+			}
+			if len(l) > len(more[0])+len(more[1]) && strings.HasPrefix(l, more[0]) && strings.HasSuffix(l, more[1]) {
+				if n := l[len(more[0]) : len(l)-len(more[1])]; digits.MatchString(n) {
+					notListed, _ = strconv.Atoi(n)
+					continue
+				}
+			}
+			lines = append(lines, l)
+		}
+		task = task[:at]
+	}
+	for measureAll(ms) > maxChars {
+		end := 3
+		for end < len(ms) && ms[end].Role != "assistant" {
+			end++
+		}
+		if end >= len(ms) {
+			break
+		}
+		turn := ms[2:end]
+		for _, m := range turn {
+			for _, c := range m.ToolCalls {
+				var out *string
+				for _, t := range turn {
+					if t.Role == "tool" && t.ToolCallID != "" && t.ToolCallID == c.ID {
+						out = llm.Text(t.ContentText())
+						break
+					}
+				}
+				lines = append(lines, droppedCall(c, out))
+			}
+		}
+		ms = append(ms[:2], ms[end:]...)
+		if len(lines) > 40 {
+			notListed += len(lines) - 40
+			lines = lines[len(lines)-40:]
+		}
+		block := []string{header}
+		if notListed > 0 {
+			block = append(block, more[0]+strconv.Itoa(notListed)+more[1])
+		}
+		block = append(block, lines...)
+		ms[1].Content = llm.Text(task + "\n\n" + strings.Join(block, "\n"))
+	}
+	return ms
+}
+
+// droppedCall is Format-AgentDroppedCall: name, arguments without the
+// purpose, and the first line of the call's result.
+func droppedCall(c llm.ToolCall, out *string) string {
+	a := purposeArg.ReplaceAllLiteralString(string(c.Function.Arguments), "")
+	a = purposeArgFirst.ReplaceAllLiteralString(a, "")
+	a = argSpaces.ReplaceAllLiteralString(a, " ")
+	first := ""
+	if out != nil {
+		for _, l := range strings.Split(*out, "\n") {
+			if t := strings.Trim(l, " \t\r"); t != "" {
+				first = t
+				break
+			}
+		}
+	}
+	cut := func(s string, max int) string {
+		if len16(s) <= max {
+			return s
+		}
+		return head16(s, max) + "..."
+	}
+	result := "(no output)"
+	if first != "" {
+		result = cut(first, 100)
+	}
+	return fmt.Sprintf("- %s %s -> %s", c.Function.Name, cut(a, 150), result)
 }
 
 // Brief is Format-AgentBrief: whitespace collapsed, and a long text shown
