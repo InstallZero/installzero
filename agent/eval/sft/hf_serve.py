@@ -1,7 +1,7 @@
 """llama-server for a local GGUF on Hugging Face Jobs, for probes that run a
 local model without the laptop GPU (model spec "hf:<file>.gguf").
 
-  hf_serve.py ensure --model <file.gguf> --assets <dir> [--flavor l40sx1] [--parallel 6]
+  hf_serve.py ensure --model <file.gguf> --assets <dir> [--flavor h200] [--parallel 6]
       Prints the URL of a healthy server for the model, starting one if none
       runs: uploads the GGUF to a private model repo once, mounts the repo in
       the official llama.cpp server image and exposes the port behind the HF
@@ -215,8 +215,8 @@ def main():
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--assets", default="")
     ap.add_argument("--repo", default="installzero-gguf")
-    ap.add_argument("--flavor", default="l40sx1")
-    ap.add_argument("--price", type=float, default=1.8, help="USD per hour of the flavor, for the cost line")
+    ap.add_argument("--flavor", default="h200", help="l40sx1 often waits for hardware for longer than --wait")
+    ap.add_argument("--price", type=float, default=5.0, help="USD per hour of the flavor, for the cost line")
     ap.add_argument("--parallel", type=int, default=6)
     ap.add_argument("--ctx", type=int, default=32768, help="context per slot, as Start-LlmServer")
     ap.add_argument("--timeout", default="6h", help="the server stops after this even if nobody stops it")
