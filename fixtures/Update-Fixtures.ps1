@@ -24,6 +24,7 @@ $root = Split-Path $PSScriptRoot
 . (Join-Path $root 'agent\InstallMd.ps1')
 . (Join-Path $root 'agent\LinuxTarget.ps1')
 . (Join-Path $root 'agent\AgentLoop.ps1')
+. (Join-Path $root 'agent\Policy.ps1')
 
 # Protect-Secrets reads the machine's secret values through this; fixtures give them per case.
 $script:FixtureSecretValues = @()
@@ -152,6 +153,11 @@ $files = @(
         param($c)
         $h = @{}; foreach ($p in $c.values.PSObject.Properties) { $h[$p.Name] = $p.Value }
         [ordered]@{ expanded = Expand-Placeholders $c.code $h }
+    }),
+    @('policy\tiers.json', @('command', 'shell', 'roots'), {
+        param($c)
+        $r = Get-CommandTier $c.command $c.shell @($c.roots)
+        [ordered]@{ tier = $r.Tier; reason = $r.Reason }
     })
 )
 
