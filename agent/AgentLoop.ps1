@@ -195,7 +195,10 @@ function Invoke-AgentLoop {
         if ($t.function.name -eq $FinishName) { continue }
         $t.function.parameters.properties.purpose = Get-PromptParameter 'purpose'
     }
-    $log = { param($e) if ($Transcript) { Add-Content -Path $Transcript -Value ($e | ConvertTo-Json -Depth 20 -Compress) -Encoding UTF8 } }
+    # UTF-8 without a BOM, as the Go engine writes (Add-Content -Encoding UTF8 starts the file with one).
+    if ($Transcript) { $Transcript = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Transcript) }
+    $utf8 = [Text.UTF8Encoding]::new($false)
+    $log = { param($e) if ($Transcript) { [IO.File]::AppendAllText($Transcript, ($e | ConvertTo-Json -Depth 20 -Compress) + "`n", $utf8) } }
     $run = [ordered]@{ steps = 0; tool_calls = 0; invalid_calls = 0; repeats = 0; blocked = 0; loops_stopped = 0; nudges = 0; server_errors = 0; prompt_tokens = 0; completion_tokens = 0; finished = $false; stop_reason = ''; error = ''; seconds = 0; last_long_text = ''; Finish = $null }
     $blockedNoted = 0; $forceResult = $false
     # A run about to end with no result saved keeps the document from a reply
@@ -297,7 +300,7 @@ function Invoke-AgentLoop {
                 $calls = @(ConvertFrom-TextToolCalls "$($msg.content)`n$(if ($msg.PSObject.Properties.Name -contains 'reasoning_content') { $msg.reasoning_content })" $run.steps)
                 if ($calls) { $text = ($text -replace '(?s)<tool_call>.*?(</tool_call>|$)', '').Trim() }
             }
-            & $log @{ type = 'assistant'; content = $text; reasoning = $reasoning; tool_calls = $calls; usage = $r.usage }
+            & $log @{ type = 'assistant'; content = $text; reasoning = $reasoning; tool_calls = @($calls | Where-Object { $_ }); usage = $r.usage }
             if ($text.Length -gt 500) { $lastLongText = $text; $run.last_long_text = $text }
             Write-AgentLine ''
             Write-AgentLine ("Turn {0} of {1}: {2} tool calls so far, {3:h\:mm\:ss} elapsed (stops at {4} min)" -f $run.steps, $MaxTurns, $run.tool_calls, $sw.Elapsed, $TimeoutMinutes) 'DarkCyan'

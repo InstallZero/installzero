@@ -229,7 +229,7 @@ $runId = Get-Date -Format 'yyyyMMdd-HHmmss'
 $logDir = Join-Path $env:LOCALAPPDATA 'rl-roboracer\doctor'
 New-Item -ItemType Directory -Force $logDir | Out-Null
 $transcript = Join-Path $logDir "$runId.jsonl"
-function Write-Transcript($Entry) { Add-Content -Path $transcript -Value ($Entry | ConvertTo-Json -Depth 20 -Compress) -Encoding UTF8 }
+function Write-Transcript($Entry) { [IO.File]::AppendAllText($transcript, ($Entry | ConvertTo-Json -Depth 20 -Compress) + "`n", [Text.UTF8Encoding]::new($false)) }
 
 $server = $null
 $result = [ordered]@{ run_id = $runId; mode = $Mode; problem = $Problem; model = $Model; backend = $Backend; steps = 0; tool_calls = 0; invalid_calls = 0; refused_commands = 0; nudges = 0; server_errors = 0; prompt_tokens = 0; completion_tokens = 0
@@ -290,7 +290,7 @@ try {
         $calls = if ($msg.PSObject.Properties.Name -contains 'tool_calls' -and $msg.tool_calls) { @($msg.tool_calls) } else { @() }
         $text = ConvertTo-PlainText "$($msg.content)"
         $reasoning = if ($msg.PSObject.Properties.Name -contains 'reasoning_content') { ConvertTo-PlainText "$($msg.reasoning_content)" } else { '' }
-        Write-Transcript @{ type = 'assistant'; content = $text; reasoning = $reasoning; tool_calls = $calls; usage = $r.usage }
+        Write-Transcript @{ type = 'assistant'; content = $text; reasoning = $reasoning; tool_calls = @($calls | Where-Object { $_ }); usage = $r.usage }
         $elapsed = $sw.Elapsed
         Write-Step ''
         Write-Step ("Step {0}: {1} of {2} checks used, {3:m\:ss} elapsed (stops at {4} min)" -f $result.steps, $result.tool_calls, $MaxSteps, $elapsed, $TimeoutMinutes) 'DarkCyan'

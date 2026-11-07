@@ -41,7 +41,7 @@
         "content": { "type": "string" },
         "reasoning": { "type": "string", "description": "Missing in doctor transcripts from before October 2026." },
         "tool_calls": {
-          "description": "The calls of this turn. The PowerShell engine writes a single call as an object rather than a one-element array, and sometimes no calls as {}; readers accept all of these, new writers write arrays.",
+          "description": "The calls of this turn. PowerShell transcripts from before November 7, 2026 have a single call as an object rather than a one-element array, and sometimes no calls as {}; readers accept all of these, writers write arrays.",
           "oneOf": [
             { "type": "array", "items": { "$ref": "#/$defs/tool_call" } },
             { "$ref": "#/$defs/tool_call" },
