@@ -10,6 +10,24 @@ import (
 	"time"
 )
 
+func TestSeedInRequest(t *testing.T) {
+	s, _, err := StartSession(context.Background(), SessionOptions{URL: "http://127.0.0.1:1", Seed: 641874537})
+	if err != nil || string(s.Request) != `{"seed":641874537}` {
+		t.Fatalf("url session request %s, %v", s.Request, err)
+	}
+	r, err := withSeed(json.RawMessage(`{"chat_template_kwargs":{"enable_thinking":false}}`), 7)
+	if err != nil || string(r) != `{"chat_template_kwargs":{"enable_thinking":false},"seed":7}` {
+		t.Errorf("merged %s, %v", r, err)
+	}
+	if r, _ := withSeed(json.RawMessage(`{"a":1}`), 0); string(r) != `{"a":1}` {
+		t.Errorf("seed 0 changed the settings: %s", r)
+	}
+	s, _, _ = StartSession(context.Background(), SessionOptions{URL: "http://127.0.0.1:1"})
+	if s.Request != nil {
+		t.Errorf("no seed, request %s", s.Request)
+	}
+}
+
 // IZ_LLAMA_TEST=1 starts the local model and runs a few loop turns on it
 // with fake tools (IZ_LLAMA_MODEL chooses the model).
 func TestLoopOnLocalModel(t *testing.T) {

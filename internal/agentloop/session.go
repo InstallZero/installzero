@@ -2,9 +2,11 @@ package agentloop
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
 	"github.com/InstallZero/installzero/internal/llm"
 )
@@ -21,6 +23,23 @@ type SessionOptions struct {
 	// Download allows fetching a missing llama.cpp build.
 	Download bool
 	Trail    io.Writer
+	// Seed is sent with every request to a llama-server (not to hosted
+	// models), so runs given the same seed sample the same way; 0 for none.
+	Seed int
+}
+
+func withSeed(request json.RawMessage, seed int) (json.RawMessage, error) {
+	if seed == 0 {
+		return request, nil
+	}
+	m := map[string]json.RawMessage{}
+	if len(request) > 0 && string(request) != "null" {
+		if err := json.Unmarshal(request, &m); err != nil {
+			return nil, fmt.Errorf("model request settings: %v", err)
+		}
+	}
+	m["seed"] = json.RawMessage(strconv.Itoa(seed))
+	return json.Marshal(m)
 }
 
 // StartSession connects to the model, starting a local llama-server when
@@ -52,11 +71,18 @@ func StartSession(ctx context.Context, o SessionOptions) (s *Session, stop func(
 			if s.Request, err = llm.ModelSettings((&llm.Runtime{Assets: assets}).ModelPath(r.Model)); err != nil {
 				return nil, stop, err
 			}
+			if s.Request, err = withSeed(s.Request, o.Seed); err != nil {
+				return nil, stop, err
+			}
 		}
 		return s, stop, nil
 	}
 	if o.URL != "" {
-		return &Session{Model: &llm.Client{URL: o.URL}, Label: o.URL, Context: o.Context, LlamaServer: true}, stop, nil
+		request, err := withSeed(nil, o.Seed)
+		if err != nil {
+			return nil, stop, err
+		}
+		return &Session{Model: &llm.Client{URL: o.URL}, Label: o.URL, Context: o.Context, Request: request, LlamaServer: true}, stop, nil
 	}
 	assets, err := llm.FindAssets(o.Root)
 	if err != nil {
@@ -104,6 +130,9 @@ func StartSession(ctx context.Context, o SessionOptions) (s *Session, stop func(
 	}
 	line("  %s on %s, ready in %vs", srv.Model, srv.Backend, srv.LoadSeconds)
 	request, err := llm.ModelSettings(modelPath)
+	if err == nil {
+		request, err = withSeed(request, o.Seed)
+	}
 	if err != nil {
 		srv.Stop()
 		return nil, stop, err

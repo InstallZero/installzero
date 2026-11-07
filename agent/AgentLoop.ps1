@@ -16,16 +16,27 @@ function Format-AgentBrief([string]$Text, [int]$Max = 240) {
     "... $tail"
 }
 
+# $Request with "seed" added (0: unchanged).
+function Add-AgentSeed($Request, [int]$Seed) {
+    if (-not $Seed) { return $Request }
+    $r = [ordered]@{}
+    if ($Request) { foreach ($p in $Request.PSObject.Properties) { $r[$p.Name] = $p.Value } }
+    $r.seed = $Seed
+    [pscustomobject]$r
+}
+
 # Local llama-server, a given URL, or a hosted model ("provider:model-id").
-function Start-AgentLlm([string]$Model, [string]$Backend, [string]$Remote, [string]$LlmUrl, [int]$Context = 32768) {
+# $Seed is sent with every request to a llama-server (not to hosted models),
+# so runs given the same seed sample the same way; 0 for none.
+function Start-AgentLlm([string]$Model, [string]$Backend, [string]$Remote, [string]$LlmUrl, [int]$Context = 32768, [int]$Seed = 0) {
     if ($Remote) {
         $llm = Get-RemoteLlm $Remote
         # An hf: model is the local GGUF on a remote llama-server: keep the local context.
         $ctx = if ($llm.Provider -eq 'hf') { $Context } else { 200000 }
-        $request = if ($llm.Provider -eq 'hf') { Get-LlmModelSettings $llm.Model } else { $null }
+        $request = if ($llm.Provider -eq 'hf') { Add-AgentSeed (Get-LlmModelSettings $llm.Model) $Seed } else { $null }
         return [pscustomobject]@{ Llm = $llm; Url = $llm.Url; Server = $null; Label = $Remote; Context = $ctx; Request = $request }
     }
-    if ($LlmUrl) { return [pscustomobject]@{ Llm = $null; Url = $LlmUrl; Server = $null; Label = $LlmUrl; Context = $Context; Request = $null } }
+    if ($LlmUrl) { return [pscustomobject]@{ Llm = $null; Url = $LlmUrl; Server = $null; Label = $LlmUrl; Context = $Context; Request = (Add-AgentSeed $null $Seed) } }
     $assets = Find-DoctorAssets
     if (-not $Backend) { $Backend = Select-LlmBackend $assets }
     if (-not $Model) { $Model = Select-DoctorModel $assets $Backend }
@@ -42,7 +53,7 @@ function Start-AgentLlm([string]$Model, [string]$Backend, [string]$Remote, [stri
     Write-AgentLine 'Starting the local model ...'
     $s = Start-LlmServer -Model $Model -Backend $Backend -Context $Context
     Write-AgentLine "  $($s.Model) on $($s.Backend), ready in $($s.LoadSeconds)s"
-    [pscustomobject]@{ Llm = $null; Url = $s.Url; Server = $s; Label = "$($s.Model) ($($s.Backend))"; Context = $Context; Request = (Get-LlmModelSettings $modelPath) }
+    [pscustomobject]@{ Llm = $null; Url = $s.Url; Server = $s; Label = "$($s.Model) ($($s.Backend))"; Context = $Context; Request = (Add-AgentSeed (Get-LlmModelSettings $modelPath) $Seed) }
 }
 
 # One keypress within $Seconds: Y yes, anything else or nothing no.

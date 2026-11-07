@@ -45,6 +45,9 @@ param(
     # ps runs Probe.ps1; go runs the Go probe (installzero probe, WSL only),
     # built from this checkout unless IZ_GO_EXE names a binary.
     [Parameter(ParameterSetName = 'probe')][ValidateSet('ps', 'go')][string]$Engine = 'ps',
+    # Sampling seed for a llama-server model (0: none); the console's worker
+    # gives both engines the same one for the same snapshot and run.
+    [Parameter(ParameterSetName = 'probe')][int]$Seed = 0,
     [Parameter(ParameterSetName = 'score', Mandatory)][string]$Score,
     [Parameter(ParameterSetName = 'score')][string]$ProbeResult = '',
     [Parameter(ParameterSetName = 'probe')][Parameter(ParameterSetName = 'score')][string]$ReplayReport = '',
@@ -177,6 +180,7 @@ switch ($PSCmdlet.ParameterSetName) {
         if ($Context) { $probeArgs.Context = $Context }
         if ($MaxTurns) { $probeArgs.MaxTurns = $MaxTurns }
         if ($GuidanceFile) { $probeArgs.GuidanceFile = $GuidanceFile }
+        if ($Seed) { $probeArgs.Seed = $Seed }
         if ($Remote) { $probeArgs.Remote = $Remote } elseif ($Model) { $probeArgs.Model = $Model }
         if ($Engine -eq 'go') {
             if (-not $Wsl) { throw 'the go engine probes WSL installs only (-Wsl)' }
@@ -188,6 +192,7 @@ switch ($PSCmdlet.ParameterSetName) {
             if ($Context) { $goArgs += @('--context', $Context) }
             if ($MaxTurns) { $goArgs += @('--max-turns', $MaxTurns) }
             if ($GuidanceFile) { $goArgs += @('--guidance', $GuidanceFile) }
+            if ($Seed) { $goArgs += @('--seed', $Seed) }
             if ($Remote) { $goArgs += @('--remote', $Remote) } elseif ($Model) { $goArgs += @('--model', $Model) }
             Write-Host "Go probe: $exe $($goArgs -join ' ')"
             & $exe @goArgs | Out-Host
@@ -201,6 +206,7 @@ switch ($PSCmdlet.ParameterSetName) {
         $s = Measure-InstallMd $r $(if (Test-Path $out) { $out } else { '' }) $probeRes $(if ($ReplayReport) { Get-Content $ReplayReport -Raw | ConvertFrom-Json })
         $s['transcript'] = $transcript
         $s['engine'] = $Engine
+        if ($Seed) { $s['seed'] = $Seed }
         Add-Content -Path $resultsFile -Value ($s | ConvertTo-Json -Depth 8 -Compress) -Encoding UTF8
         if ($ResultOut) { [IO.File]::WriteAllText($ResultOut, ($s | ConvertTo-Json -Depth 8 -Compress), [Text.UTF8Encoding]::new($false)) }
         Write-Score $s

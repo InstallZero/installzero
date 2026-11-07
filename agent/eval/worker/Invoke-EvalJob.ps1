@@ -43,6 +43,14 @@ $bid = $spec.bench_id
 $utf8 = [Text.UTF8Encoding]::new($false)
 
 function Write-Phase([string]$Phase, [string]$Msg = '') { Write-Host "PHASE: $Phase$(if ($Msg) { " | $Msg" })" }
+# FNV-1a of the UTF-8 text, 1..2^31-1 (llama-server takes any 32-bit seed;
+# 0 means none here).
+function Get-ProbeSeed([string]$Text) {
+    [uint64]$h = 2166136261
+    foreach ($b in [Text.Encoding]::UTF8.GetBytes($Text)) { $h = (($h -bxor [uint64]$b) * [uint64]16777619) % [uint64]4294967296 }
+    $s = [int]($h % [uint64]2147483648)
+    if ($s) { $s } else { 1 }
+}
 function Save-Outcome($O) { [IO.File]::WriteAllText($outcomeFile, ($O | ConvertTo-Json -Depth 15 -Compress), $utf8) }
 function Get-WslNames { @(((wsl.exe -l -q) -replace "`0", '') -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
 function Get-ListenPorts([string]$D) {
@@ -118,6 +126,9 @@ try {
                 if (Test-Path $hiddenDir) { $evalArgs.HidePaths = @($hiddenDir) }
                 if ($job.max_turns) { $evalArgs.MaxTurns = [int]$job.max_turns }
                 if ($job.engine) { $evalArgs.Engine = [string]$job.engine }
+                # The same snapshot and run number give the same seed whatever
+                # the engine or campaign, so their runs start from the same draw.
+                $evalArgs.Seed = Get-ProbeSeed "$bid|$(if ($job.run) { [int]$job.run } else { 1 })"
                 if ($spec.guidance -and "$($spec.guidance.text)".Trim()) {
                     $evalArgs.GuidanceFile = Join-Path $work 'guidance.json'
                     [IO.File]::WriteAllText($evalArgs.GuidanceFile, (@{ id = $spec.guidance.id; text = $spec.guidance.text } | ConvertTo-Json), $utf8)

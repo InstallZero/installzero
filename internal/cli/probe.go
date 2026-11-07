@@ -80,6 +80,7 @@ func cmdProbe(args []string, stdout, stderr io.Writer) int {
 	fs.StringVar(&o.ResultFile, "result", "", "result JSON to write (default next to the transcript)")
 	fs.StringVar(&o.Guidance, "guidance", "", "lesson set JSON {id, text} added to the system prompt")
 	fs.BoolVar(&o.Download, "download", false, "download a missing llama.cpp build")
+	fs.IntVar(&o.Seed, "seed", 0, "sampling seed sent with every request to a llama-server (0: none)")
 	toolsOut := fs.String("tools-out", "", "write the tool definitions as JSON and stop")
 	promptOut := fs.String("prompt-out", "", "write the system prompt, first user message and tools as JSON and stop")
 	toolCalls := fs.String("tool-calls", "", "run the tool calls in this JSON file ([{name, arguments}]), write their outputs to <file>.out.json and stop")

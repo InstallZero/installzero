@@ -54,6 +54,8 @@ type Options struct {
 	Guidance string
 	// Download allows fetching a missing llama.cpp build.
 	Download bool
+	// Seed is sent with every request to a llama-server; 0 for none.
+	Seed int
 	// Log receives progress lines; nil for none.
 	Log io.Writer
 }
@@ -332,7 +334,7 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 
 	session, stop, err := agentloop.StartSession(ctx, agentloop.SessionOptions{
 		Model: o.Model, Backend: o.Backend, Remote: o.Remote, URL: o.URL, Context: o.Context,
-		Root: o.Root, EnvFiles: []string{filepath.Join(o.Root, ".env")}, Download: o.Download, Trail: o.Log,
+		Root: o.Root, EnvFiles: []string{filepath.Join(o.Root, ".env")}, Download: o.Download, Trail: o.Log, Seed: o.Seed,
 	})
 	if err != nil {
 		return nil, err

@@ -62,6 +62,8 @@ param(
     [int]$TimeoutMinutes = 30,
     [string]$ResultFile = '',
     [string]$GuidanceFile = '',
+    # Sampling seed sent with every request to a llama-server (0: none).
+    [int]$Seed = 0,
     # Write the tool definitions offered to the model as JSON and stop (the
     # SFT export pairs them with transcripts, which do not record them).
     [string]$ToolsOut = '',
@@ -428,7 +430,7 @@ $script:DraftStats = $null
 Write-AgentLine "InstallZero probe$(if ($Target) { " of $Target" }) -> $Out" 'Cyan'
 $session = $null
 try {
-    $session = Start-AgentLlm $Model $Backend $Remote $LlmUrl $Context
+    $session = Start-AgentLlm $Model $Backend $Remote $LlmUrl $Context $Seed
     $finishGuard = {
         param($A, $Text)
         if (Test-Path $script:Out) {
