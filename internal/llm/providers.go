@@ -10,8 +10,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/InstallZero/installzero/internal/keystore"
 	"github.com/InstallZero/installzero/internal/secrets"
 )
 
@@ -126,14 +128,36 @@ func hfServed(file, key string, c RemoteConfig) (*Remote, error) {
 	return &Remote{Provider: "hf", Model: file, URL: url, APIKey: key}, nil
 }
 
-// APIKey finds a provider's key: the environment first, then the .env
-// files in order.
+var (
+	runKeysMu sync.Mutex
+	runKeys   = map[string]string{}
+)
+
+// UseKey makes key the provider's key for the rest of this process only:
+// in memory, not in the environment the install's commands inherit.
+func UseKey(provider, key string) {
+	runKeysMu.Lock()
+	defer runKeysMu.Unlock()
+	runKeys[provider] = key
+}
+
+// APIKey finds a provider's key: one given with UseKey, the environment,
+// the operating system's credential store, then the .env files in order.
 func APIKey(provider string, envFiles ...string) (string, error) {
+	runKeysMu.Lock()
+	k := runKeys[provider]
+	runKeysMu.Unlock()
+	if k != "" {
+		return k, nil
+	}
 	vars := providers[provider].KeyVars
 	for _, v := range vars {
 		if k := os.Getenv(v); k != "" {
 			return k, nil
 		}
+	}
+	if k, err := keystore.Get(provider); err == nil && k != "" {
+		return k, nil
 	}
 	for _, f := range envFiles {
 		data, err := os.ReadFile(f)
@@ -148,7 +172,7 @@ func APIKey(provider string, envFiles ...string) (string, error) {
 			}
 		}
 	}
-	return "", fmt.Errorf("Set %s (environment, the project's .env or InstallZero's .env) to use %s models.", vars[0], provider)
+	return "", fmt.Errorf("No %s API key: run installzero key set %s to keep one in %s, or set %s.", provider, provider, keystore.Name(provider), vars[0])
 }
 
 // KeyVars are the environment variables a provider's key is read from, the

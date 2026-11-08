@@ -278,6 +278,15 @@ probe benchmark already uses:
   the old doctor it fixes, not only diagnoses. Reports name the mode
   (deterministic, fixer, agent); on the two-step fixture the fixer
   installed in 1m09s with 4 turns and 11k prompt tokens.
+- 2026-11-07: API keys in the OS credential store (`internal/keystore`):
+  Windows Credential Manager (CredWriteW/CredReadW), the macOS Keychain
+  (`security`, the key sent on standard input) and the Secret Service
+  keyring on Linux (`secret-tool`), as `installzero/<provider>`. Keys are
+  looked up in the environment, then the store, then `.env`; a key typed
+  at an install is checked with the provider and saved in the store, and
+  used from memory (no longer set in the environment the install's
+  commands inherit). `installzero key set|remove|status <provider>`;
+  `doctor/Llm.ps1` reads Credential Manager too.
 - Release binaries: `scripts/build-binaries.sh` (and `scripts/build.ps1`
   locally) build with `-trimpath -ldflags "-s -w -buildid="` and the
   version; `.github/workflows/release-binaries.yml` attaches them and

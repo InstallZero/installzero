@@ -15,6 +15,7 @@ import (
 	"github.com/InstallZero/installzero/internal/agentinstall"
 	"github.com/InstallZero/installzero/internal/agentloop"
 	"github.com/InstallZero/installzero/internal/installmd"
+	"github.com/InstallZero/installzero/internal/keystore"
 	"github.com/InstallZero/installzero/internal/llm"
 	"github.com/InstallZero/installzero/internal/policy"
 	"github.com/InstallZero/installzero/internal/runner"
@@ -172,8 +173,9 @@ func envFiles() []string {
 }
 
 // ensureKey makes sure a hosted model has a key the provider accepts: from
-// the environment or InstallZero's .env, else typed (hidden) by someone at
-// the keyboard. A typed key is kept in this process only.
+// the environment, the OS credential store or InstallZero's .env, else
+// typed (hidden) by someone at the keyboard and saved in the credential
+// store. The key is used from memory; the install's commands never see it.
 func ensureKey(ctx context.Context, spec string, interactive bool, in *bufio.Reader, w io.Writer) error {
 	if !llm.IsRemoteSpec(spec) {
 		return nil
@@ -183,26 +185,46 @@ func ensureKey(ctx context.Context, spec string, interactive bool, in *bufio.Rea
 		return nil
 	}
 	key, _ := llm.APIKey(provider, envFiles()...)
+	typed := false
 	for tries := 0; ; tries++ {
 		if key != "" {
 			err := llm.CheckKey(ctx, provider, key)
 			if err == nil {
-				os.Setenv(llm.KeyVars(provider)[0], key)
+				llm.UseKey(provider, key)
+				if typed {
+					storeKey(w, provider, key)
+				}
 				return nil
 			}
 			fmt.Fprintf(w, "  %s did not accept the API key (%v).\n", provider, err)
 		}
 		if !interactive || tries >= 2 {
-			return fmt.Errorf("no %s API key that %s accepts; set %s", provider, provider, llm.KeyVars(provider)[0])
+			return fmt.Errorf("no %s API key that %s accepts; run %s key set %s", provider, provider, Name, provider)
 		}
-		fmt.Fprintf(w, "  %s (hidden; kept for this run only; Enter for no model): ", llm.KeyVars(provider)[0])
-		var line string
-		ui.WithoutEcho(os.Stdin, func() { line, _ = in.ReadString('\n') })
-		fmt.Fprintln(w)
-		if key = strings.TrimSpace(line); key == "" {
+		if key = readKey(w, in, provider, "Enter for no model"); key == "" {
 			return fmt.Errorf("no %s API key given", provider)
 		}
+		typed = true
 	}
+}
+
+// readKey asks for a key without showing it.
+func readKey(w io.Writer, in *bufio.Reader, provider, skip string) string {
+	fmt.Fprintf(w, "  %s API key (hidden; saved in %s; %s): ", provider, keystore.Name(provider), skip)
+	var line string
+	ui.WithoutEcho(os.Stdin, func() { line, _ = in.ReadString('\n') })
+	fmt.Fprintln(w)
+	return strings.TrimSpace(line)
+}
+
+// storeKey saves an accepted key in the OS credential store; where there
+// is none, the key lasts for this run only.
+func storeKey(w io.Writer, provider, key string) {
+	if err := keystore.Set(provider, key); err != nil {
+		fmt.Fprintf(w, "  Could not save the key in %s (%v); it is used for this run only.\n", keystore.Name(provider), err)
+		return
+	}
+	fmt.Fprintf(w, "  Saved in %s. %s key remove %s deletes it.\n", keystore.Name(provider), Name, provider)
 }
 
 // startAgentModel connects to a model: provider:model-id, a .gguf, "local"

@@ -163,13 +163,35 @@ function Get-HfServedLlm([string]$File) {
     [pscustomobject]@{ Provider = 'hf'; Model = $File; Url = $url.Trim(); ApiKey = (Get-ApiKey 'hf'); Backend = 'remote' }
 }
 
-# Environment first, then the project's .env (where the stack keeps its keys),
-# then InstallZero's own .env.
+# A key installzero keeps in Windows Credential Manager (installzero key set
+# <provider>, or saved when typed at an install), as installzero/<provider>.
+function Get-StoredApiKey([string]$Provider) {
+    if (-not ('InstallZero.CredStore' -as [type])) {
+        Add-Type -Namespace InstallZero -Name CredStore -MemberDefinition @'
+[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+public struct CREDENTIAL { public uint Flags; public uint Type; public string TargetName; public string Comment; public long LastWritten;
+    public uint CredentialBlobSize; public IntPtr CredentialBlob; public uint Persist; public uint AttributeCount; public IntPtr Attributes; public string TargetAlias; public string UserName; }
+[DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)] public static extern bool CredReadW(string target, uint type, uint flags, out IntPtr cred);
+[DllImport("advapi32.dll")] public static extern void CredFree(IntPtr cred);
+public static string Read(string target) {
+    IntPtr p;
+    if (!CredReadW(target, 1, 0, out p)) return null;
+    try { var c = (CREDENTIAL)Marshal.PtrToStructure(p, typeof(CREDENTIAL)); return Marshal.PtrToStringUni(c.CredentialBlob, (int)c.CredentialBlobSize / 2); }
+    finally { CredFree(p); }
+}
+'@
+    }
+    [InstallZero.CredStore]::Read("installzero/$Provider")
+}
+
+# Environment first, then Windows Credential Manager, then the project's .env
+# (where the stack keeps its keys), then InstallZero's own .env.
 function Get-ApiKey([string]$Provider) {
     $vars = $script:RemoteProviders[$Provider].KeyVars
     foreach ($var in $vars) {
         foreach ($scope in 'Process', 'User', 'Machine') { $k = [Environment]::GetEnvironmentVariable($var, $scope); if ($k) { return $k } }
     }
+    try { $k = Get-StoredApiKey $Provider; if ($k) { return $k } } catch { }
     $envFiles = @($script:DoctorRepoDir, (Join-Path $PSScriptRoot '..')) | Where-Object { $_ } | ForEach-Object { Join-Path $_ '.env' }
     foreach ($envFile in $envFiles) {
         if (-not (Test-Path $envFile)) { continue }
@@ -180,7 +202,7 @@ function Get-ApiKey([string]$Provider) {
             }
         }
     }
-    throw "Set $($vars[0]) (environment, the project's .env or InstallZero's .env) to use $Provider models."
+    throw "No $Provider API key: run installzero key set $Provider to keep one in Windows Credential Manager, or set $($vars[0])."
 }
 
 function Get-RemoteLlm([string]$Spec) {
