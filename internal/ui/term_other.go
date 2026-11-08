@@ -4,6 +4,7 @@ package ui
 
 import (
 	"os"
+	"os/exec"
 	"strconv"
 	"syscall"
 	"unsafe"
@@ -12,6 +13,22 @@ import (
 func isTerminal(f *os.File) bool {
 	st, err := f.Stat()
 	return err == nil && st.Mode()&os.ModeCharDevice != 0
+}
+
+// IsConsoleInput reports whether f is a keyboard someone can answer from.
+func IsConsoleInput(f *os.File) bool { return isTerminal(f) }
+
+// WithoutEcho runs read with the terminal not showing what is typed.
+func WithoutEcho(f *os.File, read func()) {
+	stty := func(arg string) error {
+		c := exec.Command("stty", arg)
+		c.Stdin = f
+		return c.Run()
+	}
+	if stty("-echo") == nil {
+		defer stty("echo")
+	}
+	read()
 }
 
 func termWidth(f *os.File) int {

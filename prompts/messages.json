@@ -13,6 +13,7 @@
 
   "agent_user_steps": "Install {{name}}. The steps, with the blocks chosen for this machine and each block's safety tier:\n\n{{plan}}",
   "agent_user_plain": "Install {{name}} by following these instructions:\n\n{{plan}}",
+  "fix_user": "Installing {{name}}, step {{number}} of {{total}} failed: {{id}} - {{title}}.{{#why}}\nWhy the step exists: {{why}}{{/why}}\nIts {{block}} block exited {{code}}. Fix attempt {{attempt}} of {{attempts}}.{{#history}}\nEarlier attempts on this step: {{history}}{{/history}}\n\nThe step's blocks for this machine, with their shell and safety tier:\n{{blocks}}\n\nOutput of the failed block:\n{{output}}",
 
   "doctor_apply_offer": "\nYou may apply these with apply_change, which checks again that the change is needed, asks the user to confirm, applies it and measures again: {{items}}. Call apply_change once for each of them before finish; the user decides at the console.",
   "doctor_out_of_calls": "You have used all your tool calls. Call finish now with your best diagnosis.",

@@ -29,6 +29,27 @@ func isTerminal(f *os.File) bool {
 	return r != 0
 }
 
+const enableEchoInput = 0x0004
+
+// IsConsoleInput reports whether f is a keyboard someone can answer from.
+func IsConsoleInput(f *os.File) bool {
+	var mode uint32
+	r, _, _ := getConsoleMode.Call(f.Fd(), uintptr(unsafe.Pointer(&mode)))
+	return r != 0
+}
+
+// WithoutEcho runs read with the console not showing what is typed.
+func WithoutEcho(f *os.File, read func()) {
+	var mode uint32
+	if r, _, _ := getConsoleMode.Call(f.Fd(), uintptr(unsafe.Pointer(&mode))); r == 0 {
+		read()
+		return
+	}
+	setConsoleMode.Call(f.Fd(), uintptr(mode&^enableEchoInput))
+	defer setConsoleMode.Call(f.Fd(), uintptr(mode))
+	read()
+}
+
 func termWidth(f *os.File) int {
 	var info struct {
 		size, cursor        [2]int16

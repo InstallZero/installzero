@@ -612,6 +612,39 @@
           ]
         }
       }
+    },
+    "fix/fix_result": {
+      "type": "function",
+      "function": {
+        "name": "fix_result",
+        "description": "End this fix and say how the install continues: retry runs the step again (its install, then its verify); replace runs your corrected install block instead of the step's from now on; restart stops until Windows has restarted; give_up stops the install with what the user must do.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "retry",
+                "replace",
+                "restart",
+                "give_up"
+              ]
+            },
+            "note": {
+              "type": "string",
+              "description": "The root cause and what you changed; with give_up, exactly what the user must do."
+            },
+            "install": {
+              "type": "string",
+              "description": "With replace: the complete corrected install block, in the step's shell."
+            }
+          },
+          "required": [
+            "action",
+            "note"
+          ]
+        }
+      }
     }
   },
   "parameters": {

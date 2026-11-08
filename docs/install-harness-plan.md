@@ -265,6 +265,19 @@ probe benchmark already uses:
   two-step fixture whose second step writes into a missing folder: the
   runner stopped there in 18s; gemini-4-argon created the folder and
   finished in 2m16s, 7 turns, 20k prompt tokens.
+- 2026-11-07: fix episodes (`agentinstall.Fixer`, `prompts/fix.md`), as
+  rl-roboracer's `Install.ps1` chose its doctor: `installzero install` asks
+  once which model fixes what the catalog cannot (none, local, Claude,
+  GPT, Grok, Gemini 4 Argon, or any provider:model-id, .gguf or URL;
+  `--model`; remembered in the state folder), checks a hosted key with the
+  provider and asks for it hidden when missing (kept in the process). The
+  model is the last fixer after the port fixer and the catalog, started at
+  the first failure it gets: read-only tools and `run_change` under the
+  tiers, ending in `fix_result` retry, replace (reported as a proposed
+  install.md change), restart or give_up; at most three per step. Unlike
+  the old doctor it fixes, not only diagnoses. Reports name the mode
+  (deterministic, fixer, agent); on the two-step fixture the fixer
+  installed in 1m09s with 4 turns and 11k prompt tokens.
 - Release binaries: `scripts/build-binaries.sh` (and `scripts/build.ps1`
   locally) build with `-trimpath -ldflags "-s -w -buildid="` and the
   version; `.github/workflows/release-binaries.yml` attaches them and

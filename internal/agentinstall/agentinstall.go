@@ -126,17 +126,22 @@ func Prompts(plan *runner.Plan, o Options) (system, user string, tools []json.Ra
 	return newAgent(plan, o).prompts()
 }
 
-func (a *agent) prompts() (system, user string, tools []json.RawMessage, err error) {
+// machine is the one-line description of the target the prompts show.
+func (a *agent) machine() string {
 	m := a.o.Runner.Machine
-	machine := fmt.Sprintf("%s, %s, GPU %s (%s)", m.OSVersion, m.Arch, m.GPU, m.GPUs)
+	s := fmt.Sprintf("%s, %s, GPU %s (%s)", m.OSVersion, m.Arch, m.GPU, m.GPUs)
 	if m.Driver != "" {
-		machine += ", NVIDIA driver " + m.Driver
+		s += ", NVIDIA driver " + m.Driver
 	}
-	machine += fmt.Sprintf(", %s GB RAM", prompts.Text(m.RAMGB))
+	s += fmt.Sprintf(", %s GB RAM", prompts.Text(m.RAMGB))
 	if m.DiskGB != nil {
-		machine += fmt.Sprintf(", %s GB free on the install drive", prompts.Text(*m.DiskGB))
+		s += fmt.Sprintf(", %s GB free on the install drive", prompts.Text(*m.DiskGB))
 	}
-	system, err = prompts.Prompt("agent", prompts.Values{"machine": machine, "install_dir": a.o.Runner.Dir, "repo_dir": a.o.Runner.Dir, "structured": true, "windows": a.windows})
+	return s
+}
+
+func (a *agent) prompts() (system, user string, tools []json.RawMessage, err error) {
+	system, err = prompts.Prompt("agent", prompts.Values{"machine": a.machine(), "install_dir": a.o.Runner.Dir, "repo_dir": a.o.Runner.Dir, "structured": true, "windows": a.windows})
 	if err != nil {
 		return
 	}
@@ -162,11 +167,12 @@ func (a *agent) prompts() (system, user string, tools []json.RawMessage, err err
 	if err != nil {
 		return
 	}
-	tools, err = a.tools()
+	tools, err = a.tools("agent/run_change", "agent/finish", "agent/run_step", "agent/step_result")
 	return
 }
 
-func (a *agent) tools() ([]json.RawMessage, error) {
+// tools are the read-only tools for the target, then the given ones.
+func (a *agent) tools(more ...string) ([]json.RawMessage, error) {
 	keys := []string{"doctor/system_facts", "doctor/gpu_drivers", "doctor/compose_ps", "doctor/service_logs", "doctor/read_file", "doctor/list_dir", "doctor/grep", "doctor/run_command"}
 	if !a.windows {
 		keys = []string{"doctor/system_facts", "doctor/gpu_drivers", "doctor/compose_ps", "doctor/service_logs", "linux/read_file", "linux/list_dir", "linux/grep", "linux/run_command"}
@@ -176,7 +182,7 @@ func (a *agent) tools() ([]json.RawMessage, error) {
 		ids = append(ids, s.ID)
 	}
 	v := prompts.Values{"command_timeout_minutes": int(a.o.CommandTimeout.Minutes()), "step_ids": ids}
-	keys = append(keys, "agent/run_change", "agent/finish", "agent/run_step", "agent/step_result")
+	keys = append(keys, more...)
 	var out []json.RawMessage
 	for _, k := range keys {
 		t, err := prompts.Tool(k, v)

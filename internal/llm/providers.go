@@ -1,13 +1,16 @@
 package llm
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/InstallZero/installzero/internal/secrets"
 )
@@ -146,6 +149,36 @@ func APIKey(provider string, envFiles ...string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("Set %s (environment, the project's .env or InstallZero's .env) to use %s models.", vars[0], provider)
+}
+
+// KeyVars are the environment variables a provider's key is read from, the
+// usual one first.
+func KeyVars(provider string) []string { return providers[provider].KeyVars }
+
+// CheckKey asks the provider whether it accepts a key, by listing its models.
+func CheckKey(ctx context.Context, provider, key string) error {
+	p, ok := providers[provider]
+	if !ok || p.URL == "" {
+		return fmt.Errorf("no key check for %s", provider)
+	}
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.URL+"/models", nil)
+	if err != nil {
+		return err
+	}
+	for k, v := range Headers(&Remote{Provider: provider, APIKey: key}) {
+		req.Header.Set(k, v)
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("%s answered %s", provider, res.Status)
+	}
+	return nil
 }
 
 // Headers are the authentication headers for a model; none for a local one.
