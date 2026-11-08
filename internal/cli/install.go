@@ -15,6 +15,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/InstallZero/installzero/catalog"
+	"github.com/InstallZero/installzero/internal/catalogfix"
 	"github.com/InstallZero/installzero/internal/installmd"
 	"github.com/InstallZero/installzero/internal/output"
 	"github.com/InstallZero/installzero/internal/ports"
@@ -239,15 +241,24 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 		return *yes || ask(stdout, in, "Run it? [y/N] ")
 	}
 	o.Lock = lock
+	cat, err := loadCatalog(doc, filepath.Dir(path))
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
 	o.Fixer = ports.Fixer{
 		Exec: quiet, Windows: windows, Listening: listening, PlanPorts: planPorts,
 		Confirm: func(q string) bool { return !*yes && ask(stdout, in, "\n"+q+" [y/N] ") },
+		Next: catalogfix.Fixer{
+			Catalog: cat, Exec: quiet, Windows: windows && *distro == "",
+			Confirm: func(q string) bool { return *yes || ask(stdout, in, "\n"+q+" [y/N] ") },
+		},
 	}
 	var rec *track.Recorder
 	if !*noTrack {
 		sd, err := state.Dir()
 		if err == nil {
-			rec, err = track.NewRecorder(o.Exec, track.Store{Dir: sd}, name, tgt, o.Machine.OS, o.Dir, string(body))
+			rec, err = track.NewRecorder(quiet, track.Store{Dir: sd}, name, tgt, o.Machine.OS, o.Dir, string(body))
 			if err == nil {
 				rec.Warn = func(s string) { fmt.Fprintln(stdout, "  warning: "+s) }
 				if rec.Record.Lock, err = filepath.Abs(lock); err != nil {
@@ -309,6 +320,28 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stdout, "\nThe install stopped. Fix the problem and run installzero install again: steps that are done are detected and skipped. Progress is in %s.\n", lock)
 	return 1
+}
+
+// loadCatalog is the bundled failure catalog, with the project's own entries
+// first when the front matter names their folder (catalog: <path>, relative
+// to the install.md).
+func loadCatalog(doc *installmd.Doc, base string) (*catalog.Catalog, error) {
+	bundled, err := catalog.Load()
+	if err != nil {
+		return nil, err
+	}
+	dir, _ := doc.Meta.Get("catalog")
+	if dir == "" {
+		return bundled, nil
+	}
+	if !filepath.IsAbs(dir) {
+		dir = filepath.Join(base, dir)
+	}
+	project, err := catalog.LoadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("the install.md's catalog %s: %w", dir, err)
+	}
+	return catalog.Merge(project, bundled), nil
 }
 
 // stepTracker records each step's changes for installzero uninstall.

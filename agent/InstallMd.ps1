@@ -34,7 +34,8 @@ function Read-InstallMd([string]$Path) {
             $words = @($Matches[2].Trim() -split '\s+' | Where-Object { $_ })
             $shell = @($words | Where-Object { $_ -notmatch '=' }) | Select-Object -First 1
             $when = [ordered]@{}
-            foreach ($w in @($words | Where-Object { $_ -match '=' })) { $k, $v = $w -split '=', 2; $when[$k.ToLowerInvariant()] = $v.ToLowerInvariant() }
+            # timeout= and phase= are options of the block, not conditions.
+            foreach ($w in @($words | Where-Object { $_ -match '=' })) { $k, $v = $w -split '=', 2; if ($k -notin 'timeout', 'phase') { $when[$k.ToLowerInvariant()] = $v.ToLowerInvariant() } }
             $block = [pscustomobject]@{ Kind = $kind; Shell = $(if ($shell) { $shell.ToLowerInvariant() } else { '' }); When = $when; Lines = [System.Collections.Generic.List[string]]::new() }
             continue
         }

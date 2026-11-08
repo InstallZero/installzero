@@ -68,6 +68,16 @@ py -3.12 -c "import sys; print(sys.version)"
   limit a block to matching machines. Of the blocks of one kind that match,
   the one with the most conditions is used (the first of them on a tie), so
   a generic block can sit next to specific ones.
+- **Block options** (not conditions): `timeout=90m` replaces the time limit
+  for a block (5 minutes for detect and verify, 30 for install) and suits
+  long builds; `phase=<name>` names the failure-catalog phase the block's
+  errors are looked up in, so a known failure is fixed (retried, Docker
+  Desktop restarted, `wsl --update`, build cache cleared, each asked first
+  when it restarts or clears something) or explained. Phases: `build`,
+  `verify`, `git`, `download`, `docker-start`, `docker-gpu`, `compose-up`,
+  `container`, `trainer`, `unity-client`. A project's own catalog entries
+  go in a folder named in the front matter (`catalog: scripts/install/catalog`,
+  relative to the install.md) and take precedence over the bundled ones.
 - **Placeholders**: `{{INSTALL_DIR}}` (the install folder) and
   `{{REPO_DIR}}` (`{{INSTALL_DIR}}\<name>`) are replaced before running.
 - **Ports**: a service's listening ports go in the front matter as

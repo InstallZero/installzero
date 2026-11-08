@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -67,8 +68,13 @@ func LoadFS(fsys fs.FS) (*Catalog, error) {
 		cat.byID[e.ID] = e
 		cat.entries = append(cat.entries, e)
 	}
-	sort.SliceStable(cat.entries, func(i, j int) bool {
-		a, b := cat.entries[i], cat.entries[j]
+	sortEntries(cat.entries)
+	return cat, nil
+}
+
+func sortEntries(entries []*Entry) {
+	sort.SliceStable(entries, func(i, j int) bool {
+		a, b := entries[i], entries[j]
 		if a.HasOrder != b.HasOrder {
 			return a.HasOrder
 		}
@@ -77,7 +83,6 @@ func LoadFS(fsys fs.FS) (*Catalog, error) {
 		}
 		return a.ID < b.ID
 	})
-	return cat, nil
 }
 
 func parseEntry(body []byte) (*Entry, error) {
@@ -113,6 +118,48 @@ func parseEntry(body []byte) (*Entry, error) {
 		e.HasOrder = true
 	}
 	return e, nil
+}
+
+// LoadDir reads a project's catalog folder (its *.json entries).
+func LoadDir(dir string) (*Catalog, error) {
+	return LoadFS(os.DirFS(dir))
+}
+
+// Merge combines catalogs into one in match order; for an id in more than
+// one, the first catalog's entry is kept (a project's entries before the
+// bundled ones).
+func Merge(cats ...*Catalog) *Catalog {
+	out := &Catalog{byID: map[string]*Entry{}}
+	for _, c := range cats {
+		if c == nil {
+			continue
+		}
+		for _, e := range c.entries {
+			if out.byID[e.ID] == nil {
+				out.byID[e.ID] = e
+				out.entries = append(out.entries, e)
+			}
+		}
+	}
+	sortEntries(out.entries)
+	return out
+}
+
+// Line is the line of text where the entry's pattern matches, trimmed;
+// empty when it does not match.
+func (e *Entry) Line(text string) string {
+	loc := e.re.FindStringIndex(text)
+	if loc == nil {
+		return ""
+	}
+	start := strings.LastIndex(text[:loc[0]], "\n") + 1
+	end := strings.Index(text[loc[0]:], "\n")
+	if end < 0 {
+		end = len(text)
+	} else {
+		end += loc[0]
+	}
+	return strings.TrimSpace(text[start:end])
 }
 
 // Entries returns the catalog in match order.

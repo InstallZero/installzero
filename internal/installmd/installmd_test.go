@@ -6,7 +6,9 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/InstallZero/installzero/internal/fixture"
 )
@@ -37,6 +39,18 @@ func readDoc(t *testing.T, file string) *Doc {
 		t.Fatal(err)
 	}
 	return Parse(string(data))
+}
+
+func TestBlockOptions(t *testing.T) {
+	d := readDoc(t, "options.md")
+	b := d.Steps[0].Blocks[0]
+	if b.Timeout != 90*time.Minute || b.Phase != "build" || len(b.When) != 0 {
+		t.Fatalf("%+v", b)
+	}
+	bad := Parse("---\nname: x\n---\n## Step 1: a - A\n```install bash timeout=soon\nmake\n```\n```verify bash\ntest -f out\n```\n")
+	if p := bad.Problems(); len(p) != 1 || !strings.Contains(p[0], "timeout=soon is not a duration") {
+		t.Fatalf("%q", p)
+	}
 }
 
 func TestDocFixtures(t *testing.T) {

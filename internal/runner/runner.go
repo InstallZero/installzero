@@ -141,6 +141,7 @@ type Event struct {
 type Failure struct {
 	Step    *Step
 	Block   string // install, verify or detect (a detect-only step)
+	Phase   string // the failing block's failure-catalog phase (phase=), if any
 	Code    int
 	Output  string // summarised
 	Attempt int    // 1 for the first fix
@@ -311,6 +312,9 @@ func Run(ctx context.Context, p *Plan, o Options) Report {
 
 func (o Options) run(ctx context.Context, s *Step, b *Block) target.Result {
 	timeout := map[string]time.Duration{"detect": o.DetectTimeout, "install": o.InstallTimeout, "verify": o.VerifyTimeout}[b.Kind]
+	if b.Timeout > 0 {
+		timeout = b.Timeout
+	}
 	if timeout == 0 {
 		timeout = 5 * time.Minute
 		if b.Kind == "install" {
@@ -352,12 +356,12 @@ func runStep(ctx context.Context, s *Step, o Options, r StepResult) StepResult {
 			// an earlier step must provide.
 			f = Failure{Step: s, Block: "detect", Code: 1, Output: "detect failed and the step has no install block"}
 		} else if res := o.run(ctx, s, install); res.Code != 0 {
-			f = Failure{Step: s, Block: "install", Code: res.Code, Output: describe(res)}
+			f = Failure{Step: s, Block: "install", Phase: install.Phase, Code: res.Code, Output: describe(res)}
 		} else if s.Verify == nil {
 			r.Status, r.Reason, r.Output = Done, "", ""
 			return r
 		} else if v := o.run(ctx, s, s.Verify); v.Code != 0 {
-			f = Failure{Step: s, Block: "verify", Code: v.Code, Output: describe(v)}
+			f = Failure{Step: s, Block: "verify", Phase: s.Verify.Phase, Code: v.Code, Output: describe(v)}
 		} else {
 			r.Status, r.Reason, r.Output = Done, "", ""
 			return r

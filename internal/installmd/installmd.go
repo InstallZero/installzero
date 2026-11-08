@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/InstallZero/installzero/internal/psrx"
 )
@@ -45,8 +46,24 @@ type Block struct {
 	Kind  string
 	Shell string
 	When  Fields
-	Lines []string
-	Code  string
+	// Timeout (timeout=90m) replaces the runner's limit for the block, and
+	// Phase (phase=build) names the failure-catalog phase its errors are
+	// looked up in. Neither is a condition.
+	Timeout    time.Duration
+	Phase      string
+	Lines      []string
+	Code       string
+	badTimeout string
+}
+
+// parseTimeout reads a Go duration (90m, 2h); the second result is the
+// value when it is not one.
+func parseTimeout(v string) (time.Duration, string) {
+	d, err := time.ParseDuration(v)
+	if err != nil || d <= 0 {
+		return 0, v
+	}
+	return d, ""
 }
 
 // Step is a "## Step <n>: <id> - <title>" section.
@@ -129,7 +146,14 @@ func Parse(text string) *Doc {
 						continue
 					}
 					if k, v, ok := strings.Cut(w, "="); ok {
-						block.When.set(strings.ToLower(k), strings.ToLower(v))
+						switch k = strings.ToLower(k); k {
+						case "timeout":
+							block.Timeout, block.badTimeout = parseTimeout(v)
+						case "phase":
+							block.Phase = strings.ToLower(v)
+						default:
+							block.When.set(k, strings.ToLower(v))
+						}
 					} else if block.Shell == "" {
 						block.Shell = strings.ToLower(w)
 					}
@@ -210,6 +234,9 @@ func (d *Doc) Problems() []string {
 			}
 			if b.Kind != "requires" && b.Shell != "" && !in(b.Shell, knownShell) {
 				add("step %d (%s): unknown shell '%s'", s.Number, s.ID, b.Shell)
+			}
+			if b.badTimeout != "" {
+				add("step %d (%s): %s block timeout=%s is not a duration such as 90m or 2h", s.Number, s.ID, b.Kind, b.badTimeout)
 			}
 			if b.Kind != "requires" && b.Code == "" {
 				add("step %d (%s): empty %s block", s.Number, s.ID, b.Kind)

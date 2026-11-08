@@ -152,6 +152,41 @@ func TestRunFailsWithoutFixer(t *testing.T) {
 	}
 }
 
+type timedExec struct {
+	limits map[string]time.Duration
+	builds int
+}
+
+func (e *timedExec) Run(_ context.Context, _, code, _ string, timeout time.Duration) target.Result {
+	e.limits[strings.SplitN(code, "\n", 2)[0]] = timeout
+	if strings.HasPrefix(code, "# build") {
+		if e.builds++; e.builds == 1 {
+			return target.Result{Code: 1, Out: "failed to solve"}
+		}
+	}
+	return target.Result{}
+}
+
+func TestBlockTimeoutAndPhase(t *testing.T) {
+	d := installmd.Parse("---\nname: demo\n---\n\n## Step 1: images - Images\n\n" +
+		"```install bash timeout=90m phase=build\n# build\ndocker compose build\n```\n\n```verify bash phase=verify\n# check\ndocker image inspect x\n```\n")
+	e := &timedExec{limits: map[string]time.Duration{}}
+	o := linux(e)
+	fx := &retryFixer{}
+	o.Fixer, o.Attempts = fx, 1
+	p, err := NewPlan(context.Background(), d, o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	Run(context.Background(), p, o)
+	if e.limits["# build"] != 90*time.Minute || e.limits["# check"] != 5*time.Minute {
+		t.Errorf("timeouts %v", e.limits)
+	}
+	if len(fx.calls) == 0 || fx.calls[0].Phase != "build" {
+		t.Errorf("fixes %+v", fx.calls)
+	}
+}
+
 type replaceFixer struct{ code string }
 
 func (f replaceFixer) Fix(context.Context, Failure) Fix {

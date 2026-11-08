@@ -1,6 +1,42 @@
 package catalog
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestMergeProjectFirst(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, body string) {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("mongo-auth.json", `{"id": "mongo-auth", "phases": ["container"], "pattern": "Authentication failed", "diagnosis": "d", "advice": "a", "fix": {"action": "none"}, "samples": ["MongoServerError: Authentication failed."]}`)
+	write("disk-full.json", `{"id": "disk-full", "order": 30, "phases": ["*"], "pattern": "project disk rule", "diagnosis": "project", "advice": "a", "fix": {"action": "none"}, "samples": ["project disk rule"]}`)
+	project, err := LoadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundled, _ := Load()
+	cat := Merge(project, bundled)
+	if len(cat.Entries()) != len(bundled.Entries())+1 {
+		t.Fatalf("%d entries", len(cat.Entries()))
+	}
+	if cat.ByID("disk-full").Diagnosis != "project" {
+		t.Error("the project's entry should replace the bundled one with its id")
+	}
+	if e := cat.Match("MongoServerError: Authentication failed.", "container"); e == nil || e.ID != "mongo-auth" {
+		t.Errorf("matched %v", e)
+	}
+	if e := cat.Entries()[len(cat.Entries())-1]; e.ID != "mongo-auth" {
+		t.Errorf("an entry without order goes last, got %s", e.ID)
+	}
+	if line := cat.ByID("mongo-auth").Line("a\nMongoServerError: Authentication failed.\nb"); line != "MongoServerError: Authentication failed." {
+		t.Errorf("line %q", line)
+	}
+}
 
 func TestLoadAndSelfTest(t *testing.T) {
 	cat, err := Load()
