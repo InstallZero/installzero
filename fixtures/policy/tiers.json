@@ -57,6 +57,8 @@
     {"command": "function Wait-Ready { Start-Sleep -Seconds 5 }\nWait-Ready\ndocker compose up -d", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "project", "reason": "changes only the install folder"},
     {"command": "function Reset-Box { Restart-Service docker }\nReset-Box", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "system", "reason": "machine-wide change (Restart-Service)"},
     {"command": "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*C:\\iz\\proj\\run.ps1*' } | Select-Object ProcessId | Out-Null\nNew-Item -ItemType Directory C:\\iz\\proj\\logs", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "project", "reason": "changes only the install folder"},
+    {"command": "Invoke-IzDownload -Uri https://example.com/a.zip -OutFile C:\\iz\\proj\\a.zip", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "project", "reason": "changes only the install folder"},
+    {"command": "iz_download https://example.com/a.tgz ./a.tgz", "shell": "bash", "roots": ["/root/proj"], "tier": "project", "reason": "changes only the install folder"},
     {"command": "Remove-Item C:\\Windows\\Temp\\*.log", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "system", "reason": "touches paths outside the install folder: C:\\Windows\\Temp\\*.log"}
   ]
 }
