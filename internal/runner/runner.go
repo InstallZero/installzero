@@ -357,15 +357,47 @@ func (o Options) run(ctx context.Context, s *Step, b *Block) target.Result {
 		}
 	}
 	o.event(Event{Step: s, Kind: "block", Block: b.Kind})
-	res := o.Exec.Run(ctx, b.Shell, withEnv(b.Shell, b.Code, o.Env), o.Dir, timeout)
+	res := o.RunCode(ctx, b.Shell, b.Code, timeout)
+	o.event(Event{Step: s, Kind: "block-done", Block: b.Kind, Code: res.Code})
+	return res
+}
+
+// RunBlock runs one of a step's blocks as Run does: its timeout, the
+// install's variables and events for the console.
+func (o Options) RunBlock(ctx context.Context, s *Step, b *Block) target.Result {
+	return o.run(ctx, s, b)
+}
+
+// RunCode runs code the way blocks run (in Dir, with Env set and its values
+// hidden in the output), without events.
+func (o Options) RunCode(ctx context.Context, shell, code string, timeout time.Duration) target.Result {
+	res := o.Exec.Run(ctx, shell, withEnv(shell, code, o.Env), o.Dir, timeout)
 	for k, v := range o.Env {
 		if len(v) >= 4 {
 			res.Out = strings.ReplaceAll(res.Out, v, "["+k+"]")
 		}
 	}
-	o.event(Event{Step: s, Kind: "block-done", Block: b.Kind, Code: res.Code})
 	return res
 }
+
+// Classify is the tier of code that is not one of the plan's blocks (a
+// fix, an agent's command), judged as the plan's blocks are.
+func (o Options) Classify(ctx context.Context, shell, code string) (policy.Result, error) {
+	res, err := policy.Classify(ctx, shell, []string{o.Dir}, code)
+	if err != nil {
+		return policy.Result{}, err
+	}
+	b := &Block{Block: &installmd.Block{Kind: "install", Code: code}, Shell: shell, Tier: res[0]}
+	inspectScripts(ctx, o, []*Block{b})
+	return b.Tier, nil
+}
+
+// Describe is a block's output as the report and a fixer read it.
+func Describe(res target.Result) string { return describe(res) }
+
+// IsRestartCode reports whether an exit code means Windows must restart to
+// finish what ran.
+func IsRestartCode(code int) bool { return restartCodes[code] }
 
 func runStep(ctx context.Context, s *Step, o Options, r StepResult) StepResult {
 	// A passing detect skips the step only when verify agrees: detect checks

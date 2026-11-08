@@ -62,6 +62,8 @@ const commandList = `
   init                                    write a starter install.json
   probe --wsl <distro> [--target <path>]  write an install.md from a running install
   install [install.md] [--wsl <distro>]   run an install.md: detect, install, verify each step
+          [--agent <provider:model>]      ... or let a model carry it out (same tiers and record)
+  compare <report.json>...                install runs side by side (step runner against agent)
   uninstall [project] [--data]            undo everything a recorded install changed
   version                                 print this build's version
 
@@ -105,6 +107,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return cmdInstall(args[1:], stdout, stderr)
 	case "uninstall":
 		return cmdUninstall(args[1:], stdout, stderr)
+	case "compare":
+		return cmdCompare(args[1:], stdout, stderr)
 	case "version", "--version":
 		fmt.Fprintf(stdout, "%s %s\n", Name, Version)
 		return 0

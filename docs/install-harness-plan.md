@@ -253,6 +253,18 @@ probe benchmark already uses:
   tested by connecting before it counts as free; port numbers in logs
   are taken only from address forms (Jenkins' log times and stack traces
   gave "port 21"); a `for` loop's variable was classified as a command.
+- 2026-11-07: `installzero install --agent <provider:model|model.gguf|local|url>`
+  (`internal/agentinstall`), the fully agentic side of a comparison with the
+  step runner: the model gets the plan and the `agent` prompt and tools
+  (as `agent/Agent.ps1`, now on Windows and WSL targets), runs blocks with
+  `run_step` and its own commands with `run_change` under the same tiers,
+  approvals and install record, and afterwards every step's verify block,
+  not the model, decides what is installed. Both modes write the same
+  report (`--report`, default under the state folder's `reports`);
+  `installzero compare <report>...` shows runs side by side. First run, a
+  two-step fixture whose second step writes into a missing folder: the
+  runner stopped there in 18s; gemini-4-argon created the folder and
+  finished in 2m16s, 7 turns, 20k prompt tokens.
 - Release binaries: `scripts/build-binaries.sh` (and `scripts/build.ps1`
   locally) build with `-trimpath -ldflags "-s -w -buildid="` and the
   version; `.github/workflows/release-binaries.yml` attaches them and

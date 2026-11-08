@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/InstallZero/installzero/catalog"
+	"github.com/InstallZero/installzero/internal/agentinstall"
 	"github.com/InstallZero/installzero/internal/catalogfix"
 	"github.com/InstallZero/installzero/internal/installmd"
 	"github.com/InstallZero/installzero/internal/output"
@@ -37,7 +38,7 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	stdout = term
 	fs := newFlag("install", stderr)
 	fs.Usage = func() {
-		printUsage(stderr, "install [install.md] [--dir <folder>] [--wsl <distro>] [--skip <step>] [--env NAME=VALUE] [--plan] [-y]")
+		printUsage(stderr, "install [install.md] [--dir <folder>] [--wsl <distro>] [--skip <step>] [--env NAME=VALUE] [--agent <provider:model|model.gguf|local|url>] [--report <file>] [--plan] [-y]")
 		fs.PrintDefaults()
 		fmt.Fprintln(stderr, "exit codes: 0 installed, 1 stopped, 2 usage, 3 sign out and in to continue, 3010 restart Windows to continue")
 	}
@@ -50,6 +51,11 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	fs.Var(&skips, "skip", "step id not to run (repeatable or comma separated); the steps after it still run")
 	var envs listFlag
 	fs.Var(&envs, "env", "NAME=VALUE set in every block (repeatable); variables the install.md requires are otherwise taken from this environment or asked for")
+	agentSpec := fs.String("agent", "", "let a model carry out the install instead of the step runner: provider:model-id (e.g. google:gemini-4-argon; the key from the environment or InstallZero's .env), a local .gguf, local for the default model, or an OpenAI-compatible server URL")
+	maxTurns := fs.Int("max-turns", 120, "with --agent: model turns")
+	agentTimeout := fs.Int("agent-timeout", 240, "with --agent: minutes")
+	promptOut := fs.String("prompt-out", "", "with --agent: write the system prompt, first user message and tools as JSON and stop")
+	reportPath := fs.String("report", "", "JSON report of the run, the same for both modes, for comparing them (default: under the state folder's reports)")
 	// Flags may come after the path too.
 	var paths []string
 	for {
@@ -223,8 +229,24 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 		printPlan(stdout, plan)
 		return 0
 	}
+	if *promptOut != "" {
+		if *agentSpec == "" {
+			fmt.Fprintln(stderr, "--prompt-out needs --agent")
+			return 2
+		}
+		system, user, tools, err := agentinstall.Prompts(plan, agentinstall.Options{Runner: o, Remote: *distro != ""})
+		if err == nil {
+			err = writeJSON(*promptOut, map[string]any{"system": system, "user": user, "tools": tools})
+		}
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		return 0
+	}
 
 	in := bufio.NewReader(stdin)
+	asked, blocks, fixes := 0, 0, 0
 	o.Env = map[string]string{}
 	for _, e := range envs {
 		k, v, ok := strings.Cut(e, "=")
@@ -260,12 +282,17 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stdout, "Approved (-y).")
 			return true
 		}
+		asked++
 		return ask(stdout, in, "Run them? [y/N] ")
 	}
 	o.Confirm = func(s *runner.Step, b *runner.Block) bool {
 		fmt.Fprintf(stdout, "\nA fix for step %s is machine-wide (%s):\n", s.ID, b.Tier.Reason)
 		printCode(stdout, b.Code, "  ")
-		return *yes || ask(stdout, in, "Run it? [y/N] ")
+		if *yes {
+			return true
+		}
+		asked++
+		return ask(stdout, in, "Run it? [y/N] ")
 	}
 	o.Lock = lock
 	cat, err := loadCatalog(doc, filepath.Dir(path))
@@ -275,10 +302,22 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	}
 	o.Fixer = ports.Fixer{
 		Exec: quiet, Windows: windows, Listening: listening, PlanPorts: planPorts,
-		Confirm: func(q string) bool { return !*yes && ask(stdout, in, "\n"+q+" [y/N] ") },
+		Confirm: func(q string) bool {
+			if *yes {
+				return false
+			}
+			asked++
+			return ask(stdout, in, "\n"+q+" [y/N] ")
+		},
 		Next: catalogfix.Fixer{
 			Catalog: cat, Exec: quiet, Windows: windows && *distro == "",
-			Confirm: func(q string) bool { return *yes || ask(stdout, in, "\n"+q+" [y/N] ") },
+			Confirm: func(q string) bool {
+				if *yes {
+					return true
+				}
+				asked++
+				return ask(stdout, in, "\n"+q+" [y/N] ")
+			},
 		},
 	}
 	var rec *track.Recorder
@@ -301,7 +340,13 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	done, started := 0, time.Now()
+	var shown *runner.Step
 	heading := func(s *runner.Step) {
+		shown = s
+		if s.Number == 0 {
+			fmt.Fprintf(stdout, "\n%s\n", term.Paint(s.Title, ui.Bold, ui.Cyan))
+			return
+		}
 		fmt.Fprintf(stdout, "\n%s %s\n", term.Paint(fmt.Sprintf("Step %d/%d:", s.Number, len(plan.Steps)), ui.Bold, ui.Cyan), term.Paint(s.ID+" - "+s.Title, ui.Bold))
 	}
 	o.Events = func(e runner.Event) {
@@ -310,6 +355,10 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 			heading(e.Step)
 			term.SetStatus(ui.Status{Done: done, Total: len(plan.Steps), Step: e.Step.ID, Started: started})
 		case "block":
+			blocks++
+			if e.Step != shown {
+				heading(e.Step)
+			}
 			fmt.Fprintf(stdout, "  %s\n", term.Paint(e.Block, ui.Cyan))
 			term.SetStatus(ui.Status{Done: done, Total: len(plan.Steps), Step: e.Step.ID, Block: e.Block, Started: started})
 		case "block-done":
@@ -322,6 +371,9 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 				fmt.Fprintf(stdout, "  %s\n", term.Paint(fmt.Sprintf("%s exited %d", e.Block, e.Code), ui.Yellow))
 			}
 		case "fix":
+			if !strings.HasPrefix(e.Text, "give-up:") {
+				fixes++
+			}
 			if strings.TrimSpace(strings.TrimPrefix(e.Text, "give-up:")) == "" {
 				break
 			}
@@ -337,8 +389,56 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 			}
 		}
 	}
-	rep := runner.Run(ctx, plan, o)
+	mode := "deterministic"
+	var rep runner.Report
+	var agentRes *agentinstall.Result
+	transcript := ""
+	if *agentSpec != "" {
+		mode = "agent"
+		session, stopModel, err := startAgentModel(ctx, *agentSpec, stdout)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		defer stopModel()
+		if sd, err := state.Dir(); err == nil {
+			transcript = filepath.Join(sd, "agent", fmt.Sprintf("%s-%s.jsonl", started.Format("20060102-150405"), name))
+			os.MkdirAll(filepath.Dir(transcript), 0o755)
+		}
+		fmt.Fprintf(stdout, "\n%s %s\n", term.Paint("Agent:", ui.Bold, ui.Cyan), session.Label)
+		agentRes, err = agentinstall.Run(ctx, plan, agentinstall.Options{
+			Runner: o, Session: session, Remote: *distro != "", Yes: *yes,
+			Ask: func(q, code string) bool {
+				fmt.Fprintf(stdout, "\n%s\n", term.Paint(q, ui.Yellow, ui.Bold))
+				printCode(stdout, code, "  ")
+				return ask(stdout, in, "Run it? [y/N] ")
+			},
+			MaxTurns: *maxTurns, Timeout: time.Duration(*agentTimeout) * time.Minute,
+			Transcript: transcript, Trail: stdout,
+		})
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		asked += agentRes.Asked
+		rep = runner.Report{Name: name, Dir: o.Dir, Started: started, Finished: time.Now(), OK: agentRes.OK, Steps: agentRes.Steps}
+	} else {
+		rep = runner.Run(ctx, plan, o)
+	}
 	term.Clear()
+	ir := installReport{
+		Mode: mode, Name: name, Target: tgt, Dir: o.Dir, Machine: o.Machine, Started: started,
+		Seconds: time.Since(started).Seconds(), OK: rep.OK, Steps: rep.Steps,
+		Blocks: blocks, ApprovalPrompts: asked, Fixes: fixes, Agent: agentRes, Transcript: transcript,
+	}
+	if agentRes != nil {
+		ir.Model = *agentSpec
+	}
+	if p, err := writeInstallReport(*reportPath, ir); err != nil {
+		fmt.Fprintf(stdout, "warning: could not write the report: %v\n", err)
+	} else {
+		defer fmt.Fprintf(stdout, "Report: %s\n", p)
+	}
 	if rec != nil && (prev != nil || len(rec.Record.Steps) > 0) {
 		rec.Record.OK = rep.OK
 		if err := rec.Store.Save(rec.Record); err != nil {
@@ -349,6 +449,24 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "\n%s\n", term.Paint(fmt.Sprintf("Summary (%s)", ui.Elapsed(time.Since(started))), ui.Bold))
 	for _, s := range rep.Steps {
 		fmt.Fprintf(stdout, "  %s %s\n", paintStatus(term, runner.Status(fmt.Sprintf("%-15s", s.Status))), s.ID)
+	}
+	if agentRes != nil {
+		printAgentSummary(stdout, term, agentRes)
+		if rep.OK {
+			fmt.Fprintf(stdout, "\n%s Every step's verify passed after the run.\n", term.Paint(name+" is installed.", ui.Green, ui.Bold))
+			if o.Tracker != nil {
+				fmt.Fprintf(stdout, "installzero uninstall %s undoes it.\n", name)
+			}
+			return 0
+		}
+		for _, s := range rep.Steps {
+			if s.Status == runner.Failed && s.Output != "" {
+				fmt.Fprintf(stdout, "\n%s Its output:\n", term.Paint(fmt.Sprintf("Step %s failed (%s).", s.ID, s.Reason), ui.Red, ui.Bold))
+				printCode(stdout, s.Output, "  ")
+			}
+		}
+		fmt.Fprintf(stdout, "\n%s\n", term.Paint("The agent's install is not complete: the steps above did not pass their verify.", ui.Red, ui.Bold))
+		return 1
 	}
 	if rep.OK {
 		fmt.Fprintf(stdout, "\n%s Progress is in %s.\n", term.Paint(name+" is installed.", ui.Green, ui.Bold), lock)

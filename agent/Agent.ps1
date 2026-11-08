@@ -181,7 +181,7 @@ $planText = if ($structured) {
     }) -join "`n`n"
 } else { $doc.Text }
 
-$system = Get-Prompt 'agent' @{ machine = $machineText; install_dir = $InstallDir; repo_dir = $repoDir; structured = $structured }
+$system = Get-Prompt 'agent' @{ machine = $machineText; install_dir = $InstallDir; repo_dir = $repoDir; structured = $structured; windows = $true }
 $user = Get-PromptMessage $(if ($structured) { 'agent_user_steps' } else { 'agent_user_plain' }) @{ name = $name; plan = $planText }
 if ($PromptOut) {
     [IO.File]::WriteAllText([IO.Path]::GetFullPath($PromptOut), (ConvertTo-Json ([ordered]@{ system = $system; user = $user; tools = @($tools) }) -Depth 20), [Text.UTF8Encoding]::new($false))
