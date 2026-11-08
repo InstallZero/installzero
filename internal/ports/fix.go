@@ -144,7 +144,7 @@ func (f Fixer) Fix(ctx context.Context, x runner.Failure) runner.Fix {
 		ours = ours || owner.Unit == u
 	}
 	switch {
-	case !busy || ours || !f.PlanPorts[d.Port]:
+	case !busy || ours || (!f.PlanPorts[d.Port] && len(d.Units) > 0):
 		// The port is free now, held by the step's own service, or is not
 		// one this install uses (a package started its service on its
 		// default port before the step configured it): clear the units'

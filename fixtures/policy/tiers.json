@@ -12,6 +12,8 @@
     {"command": "git status", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "read", "reason": "read-only"},
     {"command": "nvidia-smi", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "read", "reason": "read-only"},
     {"command": "docker ps", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "read", "reason": "read-only"},
+    {"command": "$c = New-Object Net.Sockets.TcpClient; $c.Connect('127.0.0.1', 6006)", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "project", "reason": "changes only the install folder"},
+    {"command": "$sh = New-Object -ComObject WScript.Shell; $sh.Run('calc')", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "system", "reason": "machine-wide change (New-Object -ComObject)"},
     {"command": "winget install -e --id Python.Python.3.12", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "system", "reason": "machine-wide change (winget)"},
     {"command": "wsl --install -d Ubuntu-24.04", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "system", "reason": "machine-wide change (wsl --install)"},
     {"command": "wsl --update", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "system", "reason": "machine-wide change (wsl --update)"},

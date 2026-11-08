@@ -186,6 +186,19 @@ func TestFixPlanPortHeldBySomethingElse(t *testing.T) {
 	}
 }
 
+func TestFixComposePortHeldOnWindows(t *testing.T) {
+	// No units to reset: a port held by another program is reported, not retried.
+	f := Fixer{Exec: &fake{}, Windows: true, PlanPorts: map[int]bool{},
+		Listening: func(context.Context) map[int]Listener {
+			return map[int]Listener{80: {Process: "container other-web-1", Where: "Docker Desktop"}}
+		}}
+	x := f.Fix(context.Background(), runner.Failure{Step: &runner.Step{Step: &installmd.Step{ID: "start"}, Install: &runner.Block{Block: &installmd.Block{Code: "docker compose up -d"}}},
+		Output: "Error response from daemon: driver failed programming external connectivity: Bind for 0.0.0.0:80 failed: port is already allocated", Attempt: 1})
+	if x.Action != "give-up" || !strings.Contains(x.Note, "container other-web-1 on Docker Desktop") {
+		t.Fatalf("%+v", x)
+	}
+}
+
 func TestFixHandsOtherFailuresOn(t *testing.T) {
 	f := Fixer{Exec: &fake{}, Listening: func(context.Context) map[int]Listener { return nil }}
 	x := f.Fix(context.Background(), runner.Failure{Step: &runner.Step{Step: &installmd.Step{ID: "s"}}, Output: "E: Unable to locate package foo", Attempt: 1})

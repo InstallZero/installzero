@@ -28,11 +28,12 @@ $script:SystemPatterns = @(
     '(?i)-Verb\s+RunAs\b'
     '(?i)\bnpm\s+(i|install)\s+(-g|--global)\b|\bpip3?\s+install\b.*--user\b|\bInstall-Module\b'
     '(?i)\[Environment\]::SetEnvironmentVariable'
+    '(?i)\bNew-Object\b[^;|\n]*-Com(Object)?\b'
 )
 
 # Commands that only act on the current folder or on paths named in the
 # command; with the path check below they stay inside the install folder.
-$script:ProjectCommands = '(?i)^(git|docker|docker-compose|python|python3|py|pip|pip3|uv|conda|mamba|npm|npx|pnpm|yarn|node|cargo|go|dotnet|make|cmake|curl|wget|tar|unzip|7z|New-Item|mkdir|md|Set-Content|Add-Content|Out-File|Copy-Item|cp|copy|Move-Item|mv|move|Remove-Item|rm|del|rmdir|Rename-Item|Expand-Archive|Compress-Archive|Invoke-WebRequest|iwr|Invoke-RestMethod|irm|Set-Location|cd|Push-Location|Pop-Location|Write-Host|Write-Output|Write-(Error|Warning|Verbose|Debug|Information|Progress)|Out-Null|Out-String|Format-\w+|Sort-Object|Measure-Object|Group-Object|Compare-Object|Tee-Object|Select-String|ConvertTo-\w+|ConvertFrom-\w+|Unblock-File|Wait-Process|(Set|Clear|Remove)-Variable|echo|Start-Sleep|ForEach-Object|Where-Object|%|\?|Select-Object|Test-Path|Join-Path|Get-\w+|Resolve-Path|Split-Path|\.\\[\w.-]+\.(ps1|bat|cmd|exe)|[\w.-]+\.(bat|cmd))$'
+$script:ProjectCommands = '(?i)^(git|docker|docker-compose|python|python3|py|pip|pip3|uv|conda|mamba|npm|npx|pnpm|yarn|node|cargo|go|dotnet|make|cmake|curl|wget|tar|unzip|7z|New-Item|New-Object|mkdir|md|Set-Content|Add-Content|Out-File|Copy-Item|cp|copy|Move-Item|mv|move|Remove-Item|rm|del|rmdir|Rename-Item|Expand-Archive|Compress-Archive|Invoke-WebRequest|iwr|Invoke-RestMethod|irm|Set-Location|cd|Push-Location|Pop-Location|Write-Host|Write-Output|Write-(Error|Warning|Verbose|Debug|Information|Progress)|Out-Null|Out-String|Format-\w+|Sort-Object|Measure-Object|Group-Object|Compare-Object|Tee-Object|Select-String|ConvertTo-\w+|ConvertFrom-\w+|Unblock-File|Wait-Process|(Set|Clear|Remove)-Variable|echo|Start-Sleep|ForEach-Object|Where-Object|%|\?|Select-Object|Test-Path|Join-Path|Get-\w+|Resolve-Path|Split-Path|\.\\[\w.-]+\.(ps1|bat|cmd|exe)|[\w.-]+\.(bat|cmd))$'
 
 function Get-CommandPaths([string]$Command) {
     $paths = [System.Collections.Generic.List[string]]::new()
