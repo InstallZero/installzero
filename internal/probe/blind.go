@@ -64,6 +64,10 @@ type blind struct {
 	attempts int
 }
 
+// driveAbs is a Windows absolute path, which filepath.Abs on Linux would
+// treat as relative.
+var driveAbs = regexp.MustCompile(`^[A-Za-z]:[\\/]`)
+
 func newBlind(root, out string, hide []string, linux bool) *blind {
 	pattern := installZeroPattern(root) + doctorHide + probeHide
 	b := &blind{out: out, leak: map[string]bool{}}
@@ -73,9 +77,12 @@ func newBlind(root, out string, hide []string, linux bool) *blind {
 			if part == "" {
 				continue
 			}
-			full, err := filepath.Abs(expandWindowsVars(part))
-			if err != nil {
-				continue
+			full := expandWindowsVars(part)
+			if !driveAbs.MatchString(full) {
+				var err error
+				if full, err = filepath.Abs(full); err != nil {
+					continue
+				}
 			}
 			full = strings.TrimRight(full, `\`)
 			b.paths = append(b.paths, full)

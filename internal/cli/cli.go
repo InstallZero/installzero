@@ -25,7 +25,7 @@ var Version = "dev"
 
 // SetName records the binary name from argv[0].
 func SetName(argv0 string) {
-	base := filepath.Base(argv0)
+	base := argv0[strings.LastIndexAny(argv0, `/\`)+1:]
 	if ext := filepath.Ext(base); strings.EqualFold(ext, ".exe") {
 		base = strings.TrimSuffix(base, ext)
 	}
