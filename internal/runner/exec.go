@@ -25,9 +25,47 @@ type Exec interface {
 
 // Non-interactive settings every block runs with: package managers and
 // tools that would ask a question take their default or fail instead.
+//
+// PowerShell: a failing cmdlet, Write-Error, throw or .NET exception ends
+// the block with exit 1. $ErrorActionPreference stays Continue because
+// Windows PowerShell turns a program's redirected stderr (docker's "Unable
+// to find image ... locally" under 2>&1 or 2>$null) into error records,
+// which Stop would make fatal; cmdlets get Stop through their defaults.
 const (
-	bashPrelude = "set -e\nexport DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a PIP_NO_INPUT=1 PIP_DISABLE_PIP_VERSION_CHECK=1 CI=1 GIT_TERMINAL_PROMPT=0 NPM_CONFIG_YES=true HOMEBREW_NO_AUTO_UPDATE=1\n"
-	psPrelude   = "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue'; $ConfirmPreference = 'None'\n[Console]::OutputEncoding = [Text.Encoding]::UTF8\n$env:CI = '1'; $env:PIP_NO_INPUT = '1'; $env:GIT_TERMINAL_PROMPT = '0'\n"
+	bashPrelude = "set -e\nexport DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a PIP_NO_INPUT=1 PIP_DISABLE_PIP_VERSION_CHECK=1 CI=1 GIT_TERMINAL_PROMPT=0 NPM_CONFIG_YES=true HOMEBREW_NO_AUTO_UPDATE=1\n" +
+		bashDownload
+	psPrelude = "$ErrorActionPreference = 'Continue'; $PSDefaultParameterValues['*:ErrorAction'] = 'Stop'; $ProgressPreference = 'SilentlyContinue'; $ConfirmPreference = 'None'\n" +
+		"trap { $l = \"$($_.InvocationInfo.Line)\".Trim(); [Console]::Error.WriteLine($_.Exception.Message + $(if ($l) { \"`n  at: $l\" })); exit 1 }\n" +
+		"[Console]::OutputEncoding = [Text.Encoding]::UTF8\n$env:CI = '1'; $env:PIP_NO_INPUT = '1'; $env:GIT_TERMINAL_PROMPT = '0'\n" +
+		psDownload
+)
+
+// Download helpers blocks may call (iz_download <url> <file>,
+// Invoke-IzDownload -Uri <url> -OutFile <file>); installzero shows their
+// progress (curl's redrawn meter, "##progress" lines) as a progress bar.
+const (
+	bashDownload = `iz_download() {
+  echo "Downloading $1"
+  if command -v curl >/dev/null 2>&1; then curl -fL --retry 3 --progress-bar -o "$2" "$1"; else wget -q -O "$2" "$1"; fi
+}
+`
+	psDownload = `function Invoke-IzDownload([Parameter(Mandatory)][string]$Uri, [Parameter(Mandatory)][string]$OutFile) {
+  [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+  $name = Split-Path $OutFile -Leaf
+  [Console]::Out.WriteLine("Downloading $Uri")
+  $res = [Net.WebRequest]::Create($Uri).GetResponse()
+  try {
+    $total = $res.ContentLength; $in = $res.GetResponseStream(); $out = [IO.File]::Create($OutFile)
+    try {
+      $buf = New-Object byte[] 1048576; $done = 0; $last = -1
+      while (($n = $in.Read($buf, 0, $buf.Length)) -gt 0) {
+        $out.Write($buf, 0, $n); $done += $n
+        if ($total -gt 0) { $pct = [int][Math]::Floor(100 * $done / $total); if ($pct -ne $last) { [Console]::Out.WriteLine("##progress $pct $name"); $last = $pct } }
+      }
+    } finally { $out.Close(); $in.Close() }
+  } finally { $res.Close() }
+}
+`
 )
 
 func isPowerShell(shell string) bool { return shell == "powershell" || shell == "pwsh" }

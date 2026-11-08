@@ -92,6 +92,17 @@ py -3.12 -c "import sys; print(sys.version)"
   `-p`) rather than relying on the software's default.
 - **Secrets**: never written into the file. Name the variable and where the
   user gets it (`HF_TOKEN: create at https://huggingface.co/settings/tokens`).
+- **Errors** (PowerShell): a failing cmdlet, `Write-Error`, `throw` or an
+  uncaught .NET exception ends the block with exit 1; add
+  `-ErrorAction SilentlyContinue` or `try`/`catch` where a failure is
+  expected. A program's stderr (`docker run ... 2>&1`, `git ... 2>$null`)
+  is output, not an error: check `$LASTEXITCODE`.
+- **Progress**: large downloads use `Invoke-IzDownload -Uri <url> -OutFile
+  <file>` (PowerShell) or `iz_download <url> <file>` (bash), which
+  installzero shows as a progress bar. A block can report its own progress
+  with lines `##progress <percent> [label]` or `##progress <done>/<total>
+  [label]`; they are drawn as the bar, not printed. These helpers are
+  installzero's: a block that uses them runs only under installzero.
 
 ## Safety
 

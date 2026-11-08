@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/InstallZero/installzero/internal/ui"
 )
 
 // The local runtime: finds the llama.cpp builds and models, picks a backend
@@ -391,7 +393,13 @@ func (rt *Runtime) download(ctx context.Context, a Asset, to string) error {
 		return err
 	}
 	h := sha256.New()
-	_, err = io.Copy(io.MultiWriter(f, h), resp.Body)
+	dst := io.MultiWriter(f, h)
+	if rt.Trail != nil {
+		m := ui.NewMeter(rt.Trail, a.Name, resp.ContentLength)
+		defer m.Done()
+		dst = io.MultiWriter(f, h, m)
+	}
+	_, err = io.Copy(dst, resp.Body)
 	if cerr := f.Close(); err == nil {
 		err = cerr
 	}

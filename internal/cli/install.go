@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/InstallZero/installzero/catalog"
 	"github.com/InstallZero/installzero/internal/catalogfix"
@@ -24,12 +25,16 @@ import (
 	"github.com/InstallZero/installzero/internal/state"
 	"github.com/InstallZero/installzero/internal/target/wsl"
 	"github.com/InstallZero/installzero/internal/track"
+	"github.com/InstallZero/installzero/internal/ui"
 )
 
 // stdin is where approvals are read; tests replace it.
 var stdin io.Reader = os.Stdin
 
 func cmdInstall(args []string, stdout, stderr io.Writer) int {
+	term := ui.New(stdout)
+	defer term.Clear()
+	stdout = term
 	fs := newFlag("install", stderr)
 	fs.Usage = func() {
 		printUsage(stderr, "install [install.md] [--dir <folder>] [--wsl <distro>] [--skip <step>] [--env NAME=VALUE] [--plan] [-y]")
@@ -86,7 +91,7 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	var o runner.Options
-	live := &linePrefixer{w: stdout, prefix: "      | "}
+	live := &linePrefixer{w: stdout, term: term, prefix: "      | "}
 	var lock string
 	if *distro != "" {
 		t := wsl.New(*distro)
@@ -241,12 +246,12 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	o.Approve = func(steps []*runner.Step) bool {
-		fmt.Fprintln(stdout, "\nThese steps change the machine outside the install folder:")
+		fmt.Fprintf(stdout, "\n%s\n", term.Paint("These steps change the machine outside the install folder:", ui.Yellow, ui.Bold))
 		for _, s := range steps {
-			fmt.Fprintf(stdout, "  Step %d: %s - %s\n", s.Number, s.ID, s.Title)
+			fmt.Fprintf(stdout, "  %s\n", term.Paint(fmt.Sprintf("Step %d: %s - %s", s.Number, s.ID, s.Title), ui.Bold))
 			for _, b := range s.Blocks() {
 				if b.Tier.Tier == "system" {
-					fmt.Fprintf(stdout, "    %s (%s):\n", b.Kind, b.Tier.Reason)
+					fmt.Fprintf(stdout, "    %s (%s):\n", b.Kind, term.Paint(b.Tier.Reason, ui.Yellow))
 					printCode(stdout, b.Code, "      ")
 				}
 			}
@@ -295,27 +300,45 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 	}
+	done, started := 0, time.Now()
+	heading := func(s *runner.Step) {
+		fmt.Fprintf(stdout, "\n%s %s\n", term.Paint(fmt.Sprintf("Step %d/%d:", s.Number, len(plan.Steps)), ui.Bold, ui.Cyan), term.Paint(s.ID+" - "+s.Title, ui.Bold))
+	}
 	o.Events = func(e runner.Event) {
 		switch e.Kind {
 		case "step":
-			fmt.Fprintf(stdout, "\nStep %d: %s - %s\n", e.Step.Number, e.Step.ID, e.Step.Title)
+			heading(e.Step)
+			term.SetStatus(ui.Status{Done: done, Total: len(plan.Steps), Step: e.Step.ID, Started: started})
 		case "block":
-			fmt.Fprintf(stdout, "  %s\n", e.Block)
+			fmt.Fprintf(stdout, "  %s\n", term.Paint(e.Block, ui.Cyan))
+			term.SetStatus(ui.Status{Done: done, Total: len(plan.Steps), Step: e.Step.ID, Block: e.Block, Started: started})
 		case "block-done":
 			live.Done()
-			if e.Code != 0 {
-				fmt.Fprintf(stdout, "  %s exited %d\n", e.Block, e.Code)
+			term.SetSub(-1, "")
+			switch {
+			case e.Code != 0 && e.Block == "detect":
+				fmt.Fprintf(stdout, "  %s\n", term.Paint("not done yet", ui.Dim))
+			case e.Code != 0:
+				fmt.Fprintf(stdout, "  %s\n", term.Paint(fmt.Sprintf("%s exited %d", e.Block, e.Code), ui.Yellow))
 			}
 		case "fix":
-			fmt.Fprintf(stdout, "  fix: %s\n", e.Text)
-		case "result":
-			if e.Step != nil && (e.Status == runner.NotApplicable || e.Status == runner.Refused || e.Status == runner.NotApproved) {
-				fmt.Fprintf(stdout, "\nStep %d: %s - %s\n", e.Step.Number, e.Step.ID, e.Step.Title)
+			if strings.TrimSpace(strings.TrimPrefix(e.Text, "give-up:")) == "" {
+				break
 			}
-			fmt.Fprintf(stdout, "  => %s%s\n", e.Status, map[bool]string{true: ": " + e.Text, false: ""}[e.Text != ""])
+			fmt.Fprintf(stdout, "  %s %s\n", term.Paint("fix:", ui.Yellow, ui.Bold), e.Text)
+		case "result":
+			done++
+			if e.Step != nil && (e.Status == runner.NotApplicable || e.Status == runner.Refused || e.Status == runner.NotApproved || e.Status == runner.Skipped) {
+				heading(e.Step)
+			}
+			fmt.Fprintf(stdout, "  => %s%s\n", paintStatus(term, e.Status), map[bool]string{true: ": " + e.Text, false: ""}[e.Text != ""])
+			if e.Step != nil {
+				term.SetStatus(ui.Status{Done: done, Total: len(plan.Steps), Step: e.Step.ID, Started: started})
+			}
 		}
 	}
 	rep := runner.Run(ctx, plan, o)
+	term.Clear()
 	if rec != nil && (prev != nil || len(rec.Record.Steps) > 0) {
 		rec.Record.OK = rep.OK
 		if err := rec.Store.Save(rec.Record); err != nil {
@@ -323,12 +346,12 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	fmt.Fprintln(stdout)
+	fmt.Fprintf(stdout, "\n%s\n", term.Paint(fmt.Sprintf("Summary (%s)", ui.Elapsed(time.Since(started))), ui.Bold))
 	for _, s := range rep.Steps {
-		fmt.Fprintf(stdout, "  %-15s %s\n", s.Status, s.ID)
+		fmt.Fprintf(stdout, "  %s %s\n", paintStatus(term, runner.Status(fmt.Sprintf("%-15s", s.Status))), s.ID)
 	}
 	if rep.OK {
-		fmt.Fprintf(stdout, "\n%s is installed. Progress is in %s.\n", name, lock)
+		fmt.Fprintf(stdout, "\n%s Progress is in %s.\n", term.Paint(name+" is installed.", ui.Green, ui.Bold), lock)
 		if o.Tracker != nil {
 			fmt.Fprintf(stdout, "installzero uninstall %s undoes it.\n", name)
 		}
@@ -346,11 +369,11 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	}
 	for _, s := range rep.Steps {
 		if s.Status == runner.Failed && s.Output != "" {
-			fmt.Fprintf(stdout, "\nStep %s failed (%s). Its output:\n", s.ID, s.Reason)
+			fmt.Fprintf(stdout, "\n%s Its output:\n", term.Paint(fmt.Sprintf("Step %s failed (%s).", s.ID, s.Reason), ui.Red, ui.Bold))
 			printCode(stdout, s.Output, "  ")
 		}
 	}
-	fmt.Fprintf(stdout, "\nThe install stopped. Fix the problem and run installzero install again: steps that are done are detected and skipped. Progress is in %s.\n", lock)
+	fmt.Fprintf(stdout, "\n%s Fix the problem and run installzero install again: steps that are done are detected and skipped. Progress is in %s.\n", term.Paint("The install stopped.", ui.Red, ui.Bold), lock)
 	return 1
 }
 
@@ -374,6 +397,21 @@ func loadCatalog(doc *installmd.Doc, base string) (*catalog.Catalog, error) {
 		return nil, fmt.Errorf("the install.md's catalog %s: %w", dir, err)
 	}
 	return catalog.Merge(project, bundled), nil
+}
+
+// paintStatus colors a step status (padding kept): green for done, red for
+// failures, yellow for what waits on the user, dim for what did not run.
+func paintStatus(t *ui.Term, s runner.Status) string {
+	style := ui.Dim
+	switch runner.Status(strings.TrimSpace(string(s))) {
+	case runner.Done, runner.AlreadyDone:
+		style = ui.Green
+	case runner.Failed, runner.Refused:
+		style = ui.Red
+	case runner.RestartNeeded, runner.SignOutNeeded, runner.NotApproved:
+		style = ui.Yellow
+	}
+	return t.Paint(string(s), style)
 }
 
 // stepTracker records each step's changes for installzero uninstall.
@@ -427,10 +465,14 @@ func ask(w io.Writer, in *bufio.Reader, q string) bool {
 
 // linePrefixer shows a command's live output indented, with a run of lines
 // that differ only in their numbers (progress) shown as its first line, a
-// count and its last line.
+// count and its last line. Progress goes to the status line instead of the
+// output: "##progress <percent>[%] [label]" or "##progress <done>/<total>
+// [label]" lines, text a tool redraws in place with a carriage return
+// (curl, pip), and percentages in ordinary lines.
 type linePrefixer struct {
 	mu      sync.Mutex
 	w       io.Writer
+	term    *ui.Term
 	prefix  string
 	partial []byte
 	key     string
@@ -438,16 +480,33 @@ type linePrefixer struct {
 	hidden  int
 }
 
-var digitRun = regexp.MustCompile(`\d+`)
+var (
+	digitRun     = regexp.MustCompile(`\d+`)
+	percentRe    = regexp.MustCompile(`(?:^|[\s\[(|])(\d{1,3}(?:\.\d+)?)\s?%(?:$|[\s\])|,])`)
+	progressLine = regexp.MustCompile(`^##progress\s+(?:(\d+(?:\.\d+)?)%?|(\d+)/(\d+))(?:\s+(.*))?$`)
+)
 
 func (l *linePrefixer) Write(p []byte) (int, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.partial = append(l.partial, p...)
 	for {
-		i := bytes.IndexByte(l.partial, '\n')
+		i := bytes.IndexAny(l.partial, "\r\n")
 		if i < 0 {
 			break
+		}
+		if l.partial[i] == '\r' {
+			if i+1 == len(l.partial) {
+				break // a \n may follow
+			}
+			if l.partial[i+1] != '\n' {
+				l.progress(output.Clean(string(l.partial[:i])), "")
+				l.partial = l.partial[i+1:]
+				continue
+			}
+			l.line(output.Clean(string(l.partial[:i])))
+			l.partial = l.partial[i+2:]
+			continue
 		}
 		l.line(output.Clean(string(l.partial[:i])))
 		l.partial = l.partial[i+1:]
@@ -455,7 +514,37 @@ func (l *linePrefixer) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+// progress shows the last percentage in s on the status line.
+func (l *linePrefixer) progress(s, label string) bool {
+	m := percentRe.FindAllStringSubmatch(s, -1)
+	if len(m) == 0 {
+		return false
+	}
+	pct, err := strconv.ParseFloat(m[len(m)-1][1], 64)
+	if err != nil || pct > 100 {
+		return false
+	}
+	if l.term != nil {
+		l.term.SetSub(pct, label)
+	}
+	return true
+}
+
 func (l *linePrefixer) line(s string) {
+	if m := progressLine.FindStringSubmatch(strings.TrimSpace(s)); m != nil {
+		pct, _ := strconv.ParseFloat(m[1], 64)
+		if m[2] != "" {
+			done, _ := strconv.ParseFloat(m[2], 64)
+			if total, _ := strconv.ParseFloat(m[3], 64); total > 0 {
+				pct = 100 * done / total
+			}
+		}
+		if l.term != nil {
+			l.term.SetSub(min(pct, 100), m[4])
+		}
+		return
+	}
+	l.progress(s, "")
 	key := digitRun.ReplaceAllString(s, "#")
 	if key == l.key {
 		l.hidden++
@@ -464,16 +553,24 @@ func (l *linePrefixer) line(s string) {
 	}
 	l.flush()
 	l.key = key
-	fmt.Fprintln(l.w, l.prefix+s)
+	l.print(s)
+}
+
+func (l *linePrefixer) print(s string) {
+	p := l.prefix
+	if l.term != nil {
+		p = l.term.Paint(p, ui.Dim)
+	}
+	fmt.Fprintln(l.w, p+s)
 }
 
 // flush ends a run of similar lines.
 func (l *linePrefixer) flush() {
 	if l.hidden > 1 {
-		fmt.Fprintf(l.w, "%s[... %d similar lines]\n", l.prefix, l.hidden-1)
+		l.print(fmt.Sprintf("[... %d similar lines]", l.hidden-1))
 	}
 	if l.hidden > 0 {
-		fmt.Fprintln(l.w, l.prefix+l.last)
+		l.print(l.last)
 	}
 	l.hidden, l.key = 0, ""
 }
