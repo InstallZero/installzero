@@ -58,7 +58,10 @@ py -3.12 -c "import sys; print(sys.version)"
     `min_driver` (NVIDIA driver version). Lists are comma separated.
   - `detect`: exits 0 when the step is already done (then it is skipped,
     once its `verify` passes too).
-  - `install`: does the step.
+  - `install`: does the step. When Windows must restart before the step
+    works (WSL, drivers, Windows features), it ends with `exit 3010` (the
+    Windows installer code for "restart required"): the run stops there,
+    offers to continue at the next sign-in, and picks up from that step.
   - `verify`: exits 0 when the step worked. Required for every step.
   - `uninstall` (optional): undoes the step beyond what InstallZero
     tracks itself (packages, files, services, users), e.g. a database

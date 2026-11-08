@@ -83,6 +83,11 @@ func TestActions(t *testing.T) {
 		t.Fatalf("restart failed: %+v", x)
 	}
 
+	x = newFixer(&fake{}, true).Fix(context.Background(), failure("docker-start", sample(t, cat, "docker-access-denied")))
+	if x.Action != "sign-out" || !strings.HasPrefix(x.Note, "[docker-access-denied] ") {
+		t.Fatalf("signout: %+v", x)
+	}
+
 	// Advice only: the catalog's diagnosis and what to do end the step.
 	x = newFixer(&fake{}, true).Fix(context.Background(), failure("docker-start", sample(t, cat, "docker-not-running")))
 	if x.Action != "give-up" || !strings.HasPrefix(x.Note, "[docker-not-running] ") {

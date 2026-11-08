@@ -187,6 +187,48 @@ func TestBlockTimeoutAndPhase(t *testing.T) {
 	}
 }
 
+type codeExec struct{ install int }
+
+func (e codeExec) Run(_ context.Context, _, code, _ string, _ time.Duration) target.Result {
+	if strings.HasPrefix(code, "# install") {
+		return target.Result{Code: e.install}
+	}
+	return target.Result{Code: 1}
+}
+
+func TestRestartStopsAndResumes(t *testing.T) {
+	d := installmd.Parse("---\nname: demo\n---\n\n## Step 1: wsl - WSL\n\n```install bash\n# install\ntouch feature\n```\n\n```verify bash\ntest -f feature\n```\n\n" +
+		"## Step 2: git - Git\n\n```install bash\n# install\n```\n\n```verify bash\ngit --version\n```\n")
+	o := linux(codeExec{install: 3010})
+	o.Approve = func([]*Step) bool { return true }
+	fx := &retryFixer{}
+	o.Fixer = fx
+	p, err := NewPlan(context.Background(), d, o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := Run(context.Background(), p, o)
+	if got := statuses(r); got != "wsl=restart-needed git=not-run" || r.OK || r.Resume != RestartNeeded || len(fx.calls) != 0 {
+		t.Fatalf("%s ok=%v resume=%q fixes=%d", got, r.OK, r.Resume, len(fx.calls))
+	}
+}
+
+type signOutFixer struct{}
+
+func (signOutFixer) Fix(context.Context, Failure) Fix {
+	return Fix{Action: "sign-out", Note: "join docker-users"}
+}
+
+func TestFixerAsksForSignOut(t *testing.T) {
+	o := linux(&fakeExec{})
+	o.Approve = func([]*Step) bool { return true }
+	o.Fixer = signOutFixer{}
+	r := Run(context.Background(), plan(t, o), o)
+	if r.Resume != SignOutNeeded || r.Steps[2].Status != SignOutNeeded || !strings.Contains(r.Steps[2].Reason, "join docker-users") {
+		t.Fatalf("%+v", r)
+	}
+}
+
 type replaceFixer struct{ code string }
 
 func (f replaceFixer) Fix(context.Context, Failure) Fix {

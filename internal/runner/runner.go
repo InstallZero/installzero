@@ -34,7 +34,16 @@ const (
 	Refused       Status = "refused"      // a never-tier block
 	NotApproved   Status = "not-approved" // the user declined its machine-wide blocks
 	NotRun        Status = "not-run"      // an earlier step stopped the run
+	// The step needs Windows restarted (its install exited 3010 or 1641) or
+	// the user signed out and in again (a fixer said so) before it can be
+	// verified; the run stops and resumes from it.
+	RestartNeeded Status = "restart-needed"
+	SignOutNeeded Status = "sign-out-needed"
 )
+
+// restartCodes are the Windows installer exit codes for "done, restart
+// required" (ERROR_SUCCESS_REBOOT_REQUIRED) and "restart started".
+var restartCodes = map[int]bool{3010: true, 1641: true}
 
 // Block is one block chosen for this machine, with its tier.
 type Block struct {
@@ -151,8 +160,9 @@ type Failure struct {
 // Fix is what a Fixer did about a failure.
 type Fix struct {
 	// Action: "retry" (the fix is applied; run the step again), "replace"
-	// (run Block instead of the step's install block from now on) or
-	// "give-up".
+	// (run Block instead of the step's install block from now on),
+	// "restart" or "sign-out" (stop until Windows is restarted, or the user
+	// signs out and in, then resume) or "give-up".
 	Action string
 	Block  *installmd.Block
 	Note   string // for the report: what was done, or what the user must do
@@ -184,12 +194,15 @@ type StepResult struct {
 
 // Report is a run's outcome.
 type Report struct {
-	Name     string       `json:"name"`
-	Dir      string       `json:"dir"`
-	Started  time.Time    `json:"started"`
-	Finished time.Time    `json:"finished"`
-	OK       bool         `json:"ok"`
-	Steps    []StepResult `json:"steps"`
+	Name     string    `json:"name"`
+	Dir      string    `json:"dir"`
+	Started  time.Time `json:"started"`
+	Finished time.Time `json:"finished"`
+	OK       bool      `json:"ok"`
+	// Resume is RestartNeeded or SignOutNeeded when the run stopped for
+	// that and continues once it is done.
+	Resume Status       `json:"resume,omitempty"`
+	Steps  []StepResult `json:"steps"`
 }
 
 // NewPlan chooses each step's blocks for the machine and classifies them.
@@ -291,8 +304,11 @@ func Run(ctx context.Context, p *Plan, o Options) Report {
 			r = runStep(ctx, s, o, r)
 		}
 		r.Seconds = time.Since(r.Started).Seconds()
-		if r.Status == Failed || r.Status == Refused || r.Status == NotApproved {
+		switch r.Status {
+		case Failed, Refused, NotApproved:
 			stopped = true
+		case RestartNeeded, SignOutNeeded:
+			stopped, rep.Resume = true, r.Status
 		}
 		if r.Status != NotRun {
 			o.event(Event{Step: s, Kind: "result", Status: r.Status, Text: r.Reason})
@@ -355,7 +371,10 @@ func runStep(ctx context.Context, s *Step, o Options, r StepResult) StepResult {
 			// A detect-only step whose detect failed: something the user or
 			// an earlier step must provide.
 			f = Failure{Step: s, Block: "detect", Code: 1, Output: "detect failed and the step has no install block"}
-		} else if res := o.run(ctx, s, install); res.Code != 0 {
+		} else if res := o.run(ctx, s, install); restartCodes[res.Code] {
+			r.Status, r.Reason, r.Output = RestartNeeded, fmt.Sprintf("install exited %d: Windows must restart to finish it", res.Code), ""
+			return r
+		} else if res.Code != 0 {
 			f = Failure{Step: s, Block: "install", Phase: install.Phase, Code: res.Code, Output: describe(res)}
 		} else if s.Verify == nil {
 			r.Status, r.Reason, r.Output = Done, "", ""
@@ -404,6 +423,12 @@ func runStep(ctx context.Context, s *Step, o Options, r StepResult) StepResult {
 			}
 			install = nb
 			r.Proposed = nb.Code
+		case "restart", "sign-out":
+			r.Status = map[string]Status{"restart": RestartNeeded, "sign-out": SignOutNeeded}[fix.Action]
+			if fix.Note != "" {
+				r.Reason += "; " + fix.Note
+			}
+			return r
 		default:
 			r.Status = Failed
 			if fix.Note != "" {

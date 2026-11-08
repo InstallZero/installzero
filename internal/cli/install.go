@@ -34,11 +34,12 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	fs.Usage = func() {
 		printUsage(stderr, "install [install.md] [--dir <folder>] [--wsl <distro>] [--plan] [-y]")
 		fs.PrintDefaults()
+		fmt.Fprintln(stderr, "exit codes: 0 installed, 1 stopped, 2 usage, 3 sign out and in to continue, 3010 restart Windows to continue")
 	}
 	dir := fs.String("dir", "", "install folder (default: the folder holding install.md; in WSL /root/<name>)")
 	distro := fs.String("wsl", "", "install into this WSL distro (blocks run inside it as root)")
 	planOnly := fs.Bool("plan", false, "show the steps, their blocks and tiers for this machine, and run nothing")
-	yes := fs.Bool("y", false, "approve machine-wide steps without asking")
+	yes := fs.Bool("y", false, "approve machine-wide steps and catalog fixes without asking; continue after a restart at the next sign-in")
 	noTrack := fs.Bool("no-track", false, "do not record what the install changes (installzero uninstall then cannot undo it)")
 	var envs listFlag
 	fs.Var(&envs, "env", "NAME=VALUE set in every block (repeatable); variables the install.md requires are otherwise taken from this environment or asked for")
@@ -311,6 +312,16 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stdout, "installzero uninstall %s undoes it.\n", name)
 		}
 		return 0
+	}
+	if rep.Resume != "" {
+		confirm := func(q string) bool {
+			fmt.Fprint(stdout, "\n"+q)
+			line, _ := in.ReadString('\n')
+			a := strings.ToLower(strings.TrimSpace(line))
+			return a == "" || a == "y" || a == "yes"
+		}
+		return reportResume(ctx, rep, name, lock, args, runtime.GOOS == "windows", *yes, confirm,
+			func(f string, a ...any) { fmt.Fprintf(stdout, f, a...) })
 	}
 	for _, s := range rep.Steps {
 		if s.Status == runner.Failed && s.Output != "" {

@@ -129,7 +129,10 @@ func (f Fixer) Fix(ctx context.Context, x runner.Failure) runner.Fix {
 		}
 		return runner.Fix{Action: "retry", Note: diag + "; cleared Docker's build cache, retrying"}
 	}
-	// none, signout, port-owner, recreate, mongo-owner: what the user (or a
+	if e.Action == "signout" {
+		return runner.Fix{Action: "sign-out", Note: advise.Note}
+	}
+	// none, port-owner, recreate, mongo-owner: what the user (or a
 	// project-specific step) must do.
 	return advise
 }
