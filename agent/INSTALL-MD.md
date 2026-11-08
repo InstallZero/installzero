@@ -50,7 +50,8 @@ py -3.12 -c "import sys; print(sys.version)"
   required; it names the default install folder (`%USERPROFILE%\<name>`).
 - **Steps**: `## Step <n>: <id> - <title>`, run in order. `<id>` is
   lowercase letters, digits, `-` and `.`. A `Why:` line says what the step
-  is for.
+  is for. `installzero install --skip <id>` leaves a step out (an optional
+  last step such as a first training job); the steps after it still run.
 - **Blocks**: fenced code with the info string `<kind> [shell] [key=value ...]`.
   - `requires`: conditions the machine must meet, as `key: value` lines.
     Keys: `os` (windows, linux, macos), `arch` (x64, arm64), `gpu` (nvidia,

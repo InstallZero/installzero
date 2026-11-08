@@ -228,6 +228,10 @@ func fullWindowsPath(p string) (string, bool) {
 }
 
 func insideFolder(path string, roots []string) bool {
+	// A wildcard pattern is as wide as its literal part.
+	if i := strings.IndexAny(path, "*?"); i >= 0 {
+		path = path[:i]
+	}
 	full, ok := fullWindowsPath(strings.TrimRight(expandPath(path), `\/`))
 	if !ok {
 		return false

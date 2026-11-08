@@ -32,7 +32,7 @@ var stdin io.Reader = os.Stdin
 func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	fs := newFlag("install", stderr)
 	fs.Usage = func() {
-		printUsage(stderr, "install [install.md] [--dir <folder>] [--wsl <distro>] [--plan] [-y]")
+		printUsage(stderr, "install [install.md] [--dir <folder>] [--wsl <distro>] [--skip <step>] [--env NAME=VALUE] [--plan] [-y]")
 		fs.PrintDefaults()
 		fmt.Fprintln(stderr, "exit codes: 0 installed, 1 stopped, 2 usage, 3 sign out and in to continue, 3010 restart Windows to continue")
 	}
@@ -41,6 +41,8 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	planOnly := fs.Bool("plan", false, "show the steps, their blocks and tiers for this machine, and run nothing")
 	yes := fs.Bool("y", false, "approve machine-wide steps and catalog fixes without asking; continue after a restart at the next sign-in")
 	noTrack := fs.Bool("no-track", false, "do not record what the install changes (installzero uninstall then cannot undo it)")
+	var skips listFlag
+	fs.Var(&skips, "skip", "step id not to run (repeatable or comma separated); the steps after it still run")
 	var envs listFlag
 	fs.Var(&envs, "env", "NAME=VALUE set in every block (repeatable); variables the install.md requires are otherwise taken from this environment or asked for")
 	// Flags may come after the path too.
@@ -158,6 +160,24 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	o.Skip = map[string]bool{}
+	for _, v := range skips {
+		for _, id := range strings.Split(v, ",") {
+			if id = strings.TrimSpace(id); id != "" {
+				o.Skip[id] = true
+			}
+		}
+	}
+	for id := range o.Skip {
+		known := false
+		for _, s := range doc.Steps {
+			known = known || s.ID == id
+		}
+		if !known {
+			fmt.Fprintf(stderr, "--skip %s: the install.md has no step with that id\n", id)
+			return 2
+		}
+	}
 	plan, err := runner.NewPlan(ctx, doc, o)
 	if err != nil {
 		fmt.Fprintln(stderr, err)

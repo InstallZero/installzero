@@ -53,6 +53,10 @@
     {"command": "if (-not (Test-Path .venv)) { python -m venv .venv }", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "project", "reason": "changes only the install folder"},
     {"command": "foo-unknown-tool --do-things", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "system", "reason": "'foo-unknown-tool' is not a known project-folder command"},
     {"command": "Get-ChildItem (", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "system", "reason": "does not parse: An expression was expected after '('."},
-    {"command": "New-Item -ItemType Directory data | Out-Null\n1..3 | ForEach-Object { \"part $_\" } | Sort-Object\nWrite-Error \"could not find libfoo\"", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "project", "reason": "changes only the install folder"}
+    {"command": "New-Item -ItemType Directory data | Out-Null\n1..3 | ForEach-Object { \"part $_\" } | Sort-Object\nWrite-Error \"could not find libfoo\"", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "project", "reason": "changes only the install folder"},
+    {"command": "function Wait-Ready { Start-Sleep -Seconds 5 }\nWait-Ready\ndocker compose up -d", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "project", "reason": "changes only the install folder"},
+    {"command": "function Reset-Box { Restart-Service docker }\nReset-Box", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "system", "reason": "machine-wide change (Restart-Service)"},
+    {"command": "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*C:\\iz\\proj\\run.ps1*' } | Select-Object ProcessId | Out-Null\nNew-Item -ItemType Directory C:\\iz\\proj\\logs", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "project", "reason": "changes only the install folder"},
+    {"command": "Remove-Item C:\\Windows\\Temp\\*.log", "shell": "powershell", "roots": ["C:\\iz\\proj"], "tier": "system", "reason": "touches paths outside the install folder: C:\\Windows\\Temp\\*.log"}
   ]
 }

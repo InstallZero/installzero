@@ -213,6 +213,19 @@ func TestRestartStopsAndResumes(t *testing.T) {
 	}
 }
 
+func TestSkip(t *testing.T) {
+	e := &fakeExec{}
+	o := linux(e)
+	o.Skip = map[string]bool{"service": true, "tools": true}
+	approvals := 0
+	o.Approve = func([]*Step) bool { approvals++; return true }
+	o.Fixer = &retryFixer{}
+	r := Run(context.Background(), plan(t, o), o)
+	if got := statuses(r); got != "tools=skipped gpu=not-applicable deps=done service=skipped" || !r.OK || approvals != 0 {
+		t.Fatalf("%s ok=%v approvals=%d", got, r.OK, approvals)
+	}
+}
+
 type signOutFixer struct{}
 
 func (signOutFixer) Fix(context.Context, Failure) Fix {

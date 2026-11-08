@@ -43,6 +43,8 @@ function Get-CommandPaths([string]$Command) {
 }
 
 function Test-InsideFolder([string]$Path, [string[]]$Roots) {
+    # A wildcard pattern (-like '*C:\repo\x.ps1*') is as wide as its literal part.
+    $Path = ($Path -split '[*?]', 2)[0]
     $expanded = $Path -replace '(?i)^\$env:(\w+)', { [Environment]::GetEnvironmentVariable($_.Groups[1].Value) } -replace '(?i)^%(\w+)%', { [Environment]::GetEnvironmentVariable($_.Groups[1].Value) } -replace '^~', $env:USERPROFILE
     $full = try { [IO.Path]::GetFullPath($expanded.TrimEnd('\', '/')) } catch { return $false }
     foreach ($r in $Roots) {
@@ -64,9 +66,12 @@ function Get-CommandTier([string]$Command, [string]$Shell = 'powershell', [strin
         $tokens = $null; $errs = $null
         $ast = [System.Management.Automation.Language.Parser]::ParseInput($Command, [ref]$tokens, [ref]$errs)
         if ($errs.Count) { return @{ Tier = 'system'; Reason = "does not parse: $($errs[0].Message)" } }
+        # Calls to the command's own functions are judged by their bodies, which the walk below also visits.
+        $own = @($ast.FindAll({ $args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true) | ForEach-Object { $_.Name })
         foreach ($c in $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.CommandAst] }, $true)) {
             $name = $c.GetCommandName()
             if (-not $name) { return @{ Tier = 'system'; Reason = "runs a computed command ($($c.Extent.Text))" } }
+            if ($own -contains $name) { continue }
             if ($name -match '(?i)^(Start-Process|saps|start)$') {
                 $els = @($c.CommandElements | Select-Object -Skip 1)
                 $i = [array]::FindIndex([object[]]$els, [Predicate[object]]{ param($e) $e -is [System.Management.Automation.Language.CommandParameterAst] -and $e.ParameterName -match '^(?i)f(i(l(e(p(a(th?)?)?)?)?)?)?$' })

@@ -39,6 +39,7 @@ const (
 	// verified; the run stops and resumes from it.
 	RestartNeeded Status = "restart-needed"
 	SignOutNeeded Status = "sign-out-needed"
+	Skipped       Status = "skipped" // the user asked to skip it (--skip)
 )
 
 // restartCodes are the Windows installer exit codes for "done, restart
@@ -134,6 +135,8 @@ type Options struct {
 	Tracker Tracker
 	// Attempts is how many fixes a step may get (default 3).
 	Attempts int
+	// Skip is the ids of steps not to run; the steps after them still run.
+	Skip map[string]bool
 	// Lock, when set, is the file where progress is written after each step.
 	Lock   string
 	Events func(Event)
@@ -287,7 +290,13 @@ func Run(ctx context.Context, p *Plan, o Options) Report {
 	}
 	rep := Report{Name: p.Name, Dir: o.Dir, Started: time.Now()}
 	approved := false
-	if sys := p.System(); len(sys) > 0 && o.Approve != nil {
+	var sys []*Step
+	for _, s := range p.System() {
+		if !o.Skip[s.ID] {
+			sys = append(sys, s)
+		}
+	}
+	if len(sys) > 0 && o.Approve != nil {
 		approved = o.Approve(sys)
 	}
 	stopped := false
@@ -296,6 +305,8 @@ func Run(ctx context.Context, p *Plan, o Options) Report {
 		switch {
 		case stopped:
 			r.Status = NotRun
+		case o.Skip[s.ID]:
+			r.Status, r.Reason = Skipped, "skipped on request"
 		case s.Unmet != nil:
 			r.Status, r.Reason = NotApplicable, strings.Join(s.Unmet, "; ")
 		case s.Highest() == policy.Never:
