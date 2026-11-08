@@ -103,3 +103,11 @@ file:
 | project | `git clone` into the install folder, `docker compose up`, `pip install` in a venv inside it, files inside it | automatically |
 | system | `winget`, `wsl --install`, services, registry outside HKCU, global `pip`/`npm`, anything unrecognised | after the user presses Y (default no) |
 | never | formatting disks, `wsl --unregister`, deleting Docker volumes or files outside the install folder | refused |
+
+A block that runs a script (`.\setup.ps1`, `bash scripts/setup.sh`,
+`-File x.ps1`) is classified by what the script does: installzero reads it,
+and the scripts it runs, and the block takes the highest tier found. A
+script it cannot read yet, a computed path (`& (Join-Path $dir 'x.ps1')`)
+or a batch file makes the block machine-wide. Programs and other languages
+(`python main.py`, `make`, `npm install`) run as written and are not
+inspected.

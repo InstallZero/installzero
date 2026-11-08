@@ -122,6 +122,7 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	if *distro == "" {
 		quiet = runner.Local{}
 	}
+	o.Read = quiet
 	listening := func(ctx context.Context) map[int]ports.Listener { return ports.Listeners(ctx, quiet, windows, host) }
 	var prev *track.Record
 	if sd, err := state.Dir(); err == nil {

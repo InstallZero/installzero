@@ -107,7 +107,10 @@ func (p *Plan) System() []*Step {
 
 // Options say where and how a plan runs.
 type Options struct {
-	Exec    Exec
+	Exec Exec
+	// Read reads the scripts blocks run, to classify them, without showing
+	// their text; Exec when nil.
+	Read    Exec
 	Machine installmd.Machine
 	// Dir is the install folder: where blocks run (when it exists) and what
 	// project-tier blocks may change.
@@ -254,6 +257,11 @@ func NewPlan(ctx context.Context, doc *installmd.Doc, o Options) (*Plan, error) 
 			b.Tier = tiers[i]
 		}
 	}
+	var all []*Block
+	for _, s := range p.Steps {
+		all = append(all, s.Blocks()...)
+	}
+	inspectScripts(ctx, o, all)
 	return p, nil
 }
 
@@ -413,6 +421,7 @@ func runStep(ctx context.Context, s *Step, o Options, r StepResult) StepResult {
 				return r
 			}
 			nb.Tier = res[0]
+			inspectScripts(ctx, o, []*Block{nb})
 			switch {
 			case nb.Tier.Tier == policy.Never:
 				r.Status, r.Reason = Refused, "the proposed fix: "+nb.Tier.Reason
