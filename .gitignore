@@ -3,5 +3,7 @@ node_modules/
 doctor/assets/
 *.log
 dist/
+/images/
+/.installzero/
 
 __pycache__/

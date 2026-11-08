@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -77,6 +78,18 @@ func TestParseListeners(t *testing.T) {
 	}
 }
 
+func TestParseContainers(t *testing.T) {
+	m := map[int]Listener{}
+	parseListeners("22\tsshd pid 1\t\n8080\t\t\n", "", m)
+	parseContainers("rl-roboracer-dashboard-1\t0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp\r\nidle\t\r\n", "Docker Desktop", m)
+	if s := m[8080].String(); s != "container rl-roboracer-dashboard-1 on Docker Desktop" {
+		t.Fatal(s)
+	}
+	if _, ok := m[80]; !ok || m[22].Process != "sshd pid 1" {
+		t.Fatalf("%+v", m)
+	}
+}
+
 func TestResolve(t *testing.T) {
 	busy := map[int]Listener{8095: {Process: "nginx pid 1"}, 8096: {Process: "x pid 2"}}
 	got := Resolve(map[string]int{"web": 8095, "agent": 50000}, busy, false)
@@ -86,6 +99,21 @@ func TestResolve(t *testing.T) {
 	got = Resolve(map[string]int{"web": 8095}, busy, true)
 	if got[0].Port != 8095 || !got[0].Reused {
 		t.Fatalf("a finished install keeps its port: %+v", got)
+	}
+}
+
+// The journal of the WSL replay: the apt package's first starts of Jenkins
+// on 8080 while a Docker Desktop container held it. Log times and stack
+// trace line numbers must not pass for ports.
+func TestDiagnoseRealJenkinsJournal(t *testing.T) {
+	b, err := os.ReadFile("testdata/jenkins-journal.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := &fake{answers: map[string]string{"journalctl -u": string(b)}}
+	d := Diagnose(context.Background(), e, false, jenkinsStep, "Job for jenkins.service failed because the control process exited with error code.")
+	if d == nil || d.Port != 8080 || !d.StartLimit {
+		t.Fatalf("%+v", d)
 	}
 }
 

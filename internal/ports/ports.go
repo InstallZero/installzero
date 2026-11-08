@@ -90,10 +90,10 @@ const bashListeners = `ss -ltnpH 2>/dev/null | while read -r _ _ _ local _ users
   port=${local##*:}
   pid=$(printf '%s' "$users" | sed -n 's/.*pid=\([0-9]*\).*/\1/p')
   name=$(printf '%s' "$users" | sed -n 's/.*(("\([^"]*\)".*/\1/p')
-  unit=""
-  [ -n "$pid" ] && unit=$(ps -o unit= -p "$pid" 2>/dev/null | tr -d ' ')
+  unit="" owner=""
+  [ -n "$pid" ] && owner="$name pid $pid" && unit=$(ps -o unit= -p "$pid" 2>/dev/null | tr -d ' ')
   case "$unit" in *.service) ;; *) unit="" ;; esac
-  printf '%s\t%s pid %s\t%s\n' "$port" "$name" "$pid" "$unit"
+  printf '%s\t%s\t%s\n' "$port" "$owner" "$unit"
 done`
 
 const psListeners = `$names = @{}; Get-Process -ErrorAction SilentlyContinue | ForEach-Object { $names[$_.Id] = $_.ProcessName }
@@ -103,6 +103,14 @@ Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | ForEach-Objec
     "$($_.LocalPort)` + "`t" + `$($names[$id]) pid $id` + "`t" + `$($svcs[$id])"
 }`
 
+// known reports whether a port's listener is already named. In WSL's
+// mirrored networking ss lists ports of other distros without a process;
+// a later source (Windows, Docker Desktop) may name them.
+func known(into map[int]Listener, port int) bool {
+	l, ok := into[port]
+	return ok && (l.Process != "" || l.Unit != "")
+}
+
 func parseListeners(out, where string, into map[int]Listener) {
 	for _, l := range strings.Split(strings.ReplaceAll(out, "\r", ""), "\n") {
 		f := strings.Split(l, "\t")
@@ -110,7 +118,7 @@ func parseListeners(out, where string, into map[int]Listener) {
 		if err != nil || len(f) < 2 {
 			continue
 		}
-		if _, ok := into[n]; ok {
+		if known(into, n) {
 			continue
 		}
 		li := Listener{Process: strings.TrimSpace(f[1]), Where: where}
@@ -133,8 +141,42 @@ func Listeners(ctx context.Context, e Exec, windows bool, host Exec) map[int]Lis
 	parseListeners(e.Run(ctx, "bash", bashListeners, "", time.Minute).Out, "", out)
 	if host != nil {
 		parseListeners(host.Run(ctx, "powershell", psListeners, "", 2*time.Minute).Out, "Windows", out)
+		// Containers of Docker Desktop listen in its own distro, which
+		// neither ss in the target nor Windows' connection list shows.
+		parseContainers(host.Run(ctx, "powershell", psContainers, "", time.Minute).Out, "Docker Desktop", out)
 	}
 	return out
+}
+
+const psContainers = `if (Get-Command docker -ErrorAction SilentlyContinue) { docker ps --format "{{.Names}}` + "`t" + `{{.Ports}}" 2>$null }`
+
+var published = regexp.MustCompile(`:(\d+)->`)
+
+// parseContainers reads docker ps lines (name, tab, ports) into listeners.
+func parseContainers(out, where string, into map[int]Listener) {
+	for _, l := range strings.Split(strings.ReplaceAll(out, "\r", ""), "\n") {
+		name, ports, ok := strings.Cut(l, "\t")
+		if !ok {
+			continue
+		}
+		for _, m := range published.FindAllStringSubmatch(ports, -1) {
+			n, _ := strconv.Atoi(m[1])
+			if n > 0 && !known(into, n) {
+				into[n] = Listener{Process: "container " + name, Where: where}
+			}
+		}
+	}
+}
+
+// Answers reports whether something accepts connections on a port of the
+// target, which finds listeners the lists miss (other WSL distros).
+func Answers(ctx context.Context, e Exec, windows bool, port int) bool {
+	if windows {
+		r := e.Run(ctx, "powershell", fmt.Sprintf(`$c = [Net.Sockets.TcpClient]::new(); try { $c.Connect('127.0.0.1', %d); exit 0 } catch { exit 1 } finally { $c.Close() }`, port), "", time.Minute)
+		return r.Code == 0
+	}
+	r := e.Run(ctx, "bash", fmt.Sprintf("timeout 3 bash -c 'exec 3<>/dev/tcp/127.0.0.1/%d' 2>/dev/null", port), "", time.Minute)
+	return r.Code == 0
 }
 
 // MirroredWSL reports whether WSL shares ports with Windows

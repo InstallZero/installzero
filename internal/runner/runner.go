@@ -354,12 +354,12 @@ func runStep(ctx context.Context, s *Step, o Options, r StepResult) StepResult {
 		} else if res := o.run(ctx, s, install); res.Code != 0 {
 			f = Failure{Step: s, Block: "install", Code: res.Code, Output: describe(res)}
 		} else if s.Verify == nil {
-			r.Status = Done
+			r.Status, r.Reason, r.Output = Done, "", ""
 			return r
 		} else if v := o.run(ctx, s, s.Verify); v.Code != 0 {
 			f = Failure{Step: s, Block: "verify", Code: v.Code, Output: describe(v)}
 		} else {
-			r.Status = Done
+			r.Status, r.Reason, r.Output = Done, "", ""
 			return r
 		}
 		r.Output = f.Output

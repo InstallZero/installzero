@@ -20,6 +20,9 @@ import (
 // iz and installzero are the same command.
 var Name = "installzero"
 
+// Version is set by release builds (-ldflags "-X .../internal/cli.Version=v0.1.0").
+var Version = "dev"
+
 // SetName records the binary name from argv[0].
 func SetName(argv0 string) {
 	base := filepath.Base(argv0)
@@ -60,6 +63,7 @@ const commandList = `
   probe --wsl <distro> [--target <path>]  write an install.md from a running install
   install [install.md] [--wsl <distro>]   run an install.md: detect, install, verify each step
   uninstall [project] [--data]            undo everything a recorded install changed
+  version                                 print this build's version
 
 add takes --list to show phases and install nothing. remove takes --data to
 include data folders. -y skips prompts, --phase <id> limits the run to one
@@ -101,6 +105,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return cmdInstall(args[1:], stdout, stderr)
 	case "uninstall":
 		return cmdUninstall(args[1:], stdout, stderr)
+	case "version", "--version":
+		fmt.Fprintf(stdout, "%s %s\n", Name, Version)
+		return 0
 	default:
 		fmt.Fprintf(stderr, "unknown command %q\n\n", args[0])
 		fmt.Fprint(stderr, usageText()+commandList)

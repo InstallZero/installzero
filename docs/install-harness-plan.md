@@ -239,5 +239,21 @@ probe benchmark already uses:
   Jenkins), the units are reset-failed and the step retried; when
   something else on the target holds a port the install needs, the user
   is asked whether to stop its unit; otherwise the step stops with who
-  holds the port. Tested against the Jenkins journal and on Windows with
-  a held port; not yet replayed in WSL (the replay image was gone).
+  holds the port.
+- WSL replay of the Jenkins fixture (`fixtures/install/jenkins.install.md`,
+  written from the curated recipe since gemini's install.md was gone) on a
+  fresh Ubuntu 24.04: 8080 was held by a Docker Desktop container
+  (rl-roboracer's dashboard), which is what broke the first replay too.
+  Step 4 failed as before; the fixer found 8080 in the journal, reset
+  jenkins.service and the retry served Jenkins on 8095, with no person
+  involved. Uninstall and a second replay worked the same way. Found on
+  the way: in mirrored networking `ss` lists other distros' ports without
+  a process and Windows does not list them at all, so Docker Desktop's
+  published ports are read with `docker ps`, and a port nobody lists is
+  tested by connecting before it counts as free; port numbers in logs
+  are taken only from address forms (Jenkins' log times and stack traces
+  gave "port 21"); a `for` loop's variable was classified as a command.
+- Release binaries: `scripts/build-binaries.sh` (and `scripts/build.ps1`
+  locally) build with `-trimpath -ldflags "-s -w -buildid="` and the
+  version; `.github/workflows/release-binaries.yml` attaches them and
+  SHA256SUMS to the tag's GitHub release. Same commit, same bytes.

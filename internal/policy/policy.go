@@ -284,6 +284,12 @@ func Bash(command string, roots []string) Result {
 		ws := words(seg)
 		i := 0
 		for i < len(ws) && (keywordWord.Match(ws[i]) || assignWord.Match(ws[i])) {
+			// A loop header names a variable and lists words; command
+			// substitutions in the list are segments of their own.
+			if ws[i] == "for" || ws[i] == "select" {
+				i = len(ws)
+				break
+			}
 			i++
 		}
 		if i >= len(ws) {
@@ -311,6 +317,9 @@ func Bash(command string, roots []string) Result {
 			if len(args) == 0 || strings.HasPrefix(args[0], "-") {
 				return Result{System, fmt.Sprintf("'%s' runs a script from its input", name)}
 			}
+			continue
+		}
+		if readonly.Bash(seg) == "" {
 			continue
 		}
 		builtin := false

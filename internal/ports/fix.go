@@ -14,9 +14,11 @@ import (
 
 var (
 	bindError = regexp.MustCompile(`(?i)address already in use|EADDRINUSE|port is already allocated|failed to bind|could not bind|bind\(\) to \S+ failed|Only one usage of each socket address|Ports are not available|already running on port|WSAEADDRINUSE`)
-	portIn    = regexp.MustCompile(`(?i)(?:port\s+|:)(\d{2,5})\b`)
-	unitIn    = regexp.MustCompile(`systemctl\s+(?:--\S+\s+)*(?:start|restart|enable|reload-or-restart|try-restart)\s+(?:--now\s+)?([\w@.-]+)`)
-	startLim  = regexp.MustCompile(`(?i)start request repeated too quickly|start-limit-hit`)
+	// Address forms only: log lines also hold times (00:12:17.397) and
+	// stack traces (Main.java:355).
+	portIn   = regexp.MustCompile(`(?i)(?:\b\d{1,3}(?:\.\d{1,3}){3}|\]|::|\*|\blocalhost):(\d{1,5})\b|\bport\s+(\d{1,5})\b`)
+	unitIn   = regexp.MustCompile(`systemctl\s+(?:--\S+\s+)*(?:start|restart|enable|reload-or-restart|try-restart)\s+(?:--now\s+)?([\w@.-]+)`)
+	startLim = regexp.MustCompile(`(?i)start request repeated too quickly|start-limit-hit`)
 )
 
 // Diagnosis is why a step could not bind a port.
@@ -44,6 +46,18 @@ func Units(code string) []string {
 	return out
 }
 
+func lastPort(line string) int {
+	m := portIn.FindAllStringSubmatch(line, -1)
+	for k := len(m) - 1; k >= 0; k-- {
+		for _, g := range m[k][1:] {
+			if n, err := strconv.Atoi(g); err == nil && n > 0 && n <= 65535 {
+				return n
+			}
+		}
+	}
+	return 0
+}
+
 // Diagnose looks for a bind failure in a failed step's output and in the
 // logs of the units the step starts; nil when there is none.
 func Diagnose(ctx context.Context, e Exec, windows bool, code, out string) *Diagnosis {
@@ -64,16 +78,13 @@ func Diagnose(ctx context.Context, e Exec, windows bool, code, out string) *Diag
 			continue
 		}
 		ev = append(ev, strings.TrimSpace(l))
-		if d.Port != 0 {
-			continue
-		}
 		// The port is on the matching line or just before it (Java prints
-		// "Failed to bind to 0.0.0.0/0.0.0.0:8080" above the BindException).
-		for j := i; j >= 0 && j >= i-2 && d.Port == 0; j-- {
-			if m := portIn.FindAllStringSubmatch(lines[j], -1); m != nil {
-				if n, err := strconv.Atoi(m[len(m)-1][1]); err == nil && n <= 65535 {
-					d.Port = n
-				}
+		// "Failed to bind to 0.0.0.0/0.0.0.0:8080" above the BindException);
+		// the last failure in the logs wins.
+		for j := i; j >= 0 && j >= i-2; j-- {
+			if p := lastPort(lines[j]); p != 0 {
+				d.Port = p
+				break
 			}
 		}
 	}
@@ -125,6 +136,9 @@ func (f Fixer) Fix(ctx context.Context, x runner.Failure) runner.Fix {
 		return runner.Fix{Action: "give-up", Note: "a program could not bind its port, and the message does not say which:\n" + d.Evidence}
 	}
 	owner, busy := f.Listening(ctx)[d.Port]
+	if !busy && Answers(ctx, f.Exec, f.Windows, d.Port) {
+		owner, busy = Listener{Process: "a program outside this machine's process list (another WSL distro or a container?)"}, true
+	}
 	ours := false
 	for _, u := range d.Units {
 		ours = ours || owner.Unit == u
