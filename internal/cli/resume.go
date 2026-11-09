@@ -47,9 +47,12 @@ var notNameChars = regexp.MustCompile(`[^A-Za-z0-9._-]+`)
 // registerResume writes the resume script and a RunOnce entry (current
 // user) that starts it at the next sign-in; it returns the script's path.
 func registerResume(ctx context.Context, name string, args []string) (string, error) {
-	exe, err := os.Executable()
-	if err != nil {
-		return "", err
+	exe := resumeExe
+	if exe == "" {
+		var err error
+		if exe, err = os.Executable(); err != nil {
+			return "", err
+		}
 	}
 	cwd, err := os.Getwd()
 	if err != nil {

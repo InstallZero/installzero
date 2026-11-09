@@ -20,6 +20,7 @@ import (
 	"github.com/InstallZero/installzero/internal/agentinstall"
 	"github.com/InstallZero/installzero/internal/agentloop"
 	"github.com/InstallZero/installzero/internal/catalogfix"
+	"github.com/InstallZero/installzero/internal/fetch"
 	"github.com/InstallZero/installzero/internal/installmd"
 	"github.com/InstallZero/installzero/internal/output"
 	"github.com/InstallZero/installzero/internal/ports"
@@ -58,6 +59,8 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	agentTimeout := fs.Int("agent-timeout", 240, "with --agent: minutes")
 	promptOut := fs.String("prompt-out", "", "with --agent: write the system prompt, first user message and tools as JSON and stop")
 	reportPath := fs.String("report", "", "JSON report of the run, the same for both modes, for comparing them (default: under the state folder's reports)")
+	into := fs.String("into", "", "with owner/repo or a git URL: the folder for its checkout (default ~/<repo>/<repo>)")
+	resumeArgs := append([]string(nil), args...)
 	// Flags may come after the path too.
 	var paths []string
 	for {
@@ -79,6 +82,28 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 	}
 	if path == "" {
 		path = "install.md"
+	}
+	if fi, err := os.Stat(path); err == nil && fi.IsDir() {
+		path = filepath.Join(path, "install.md")
+	} else if r, ok := fetch.Parse(path); ok && len(paths) == 1 {
+		dest := *into
+		if dest == "" {
+			if dest, err = defaultCheckout(r); err != nil {
+				fmt.Fprintln(stderr, err)
+				return 1
+			}
+		}
+		md, err := checkout(context.Background(), r, dest, stdout)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		for i, a := range resumeArgs {
+			if a == paths[0] {
+				resumeArgs[i] = md
+			}
+		}
+		path = md
 	}
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -534,7 +559,7 @@ func cmdInstall(args []string, stdout, stderr io.Writer) int {
 			a := strings.ToLower(strings.TrimSpace(line))
 			return a == "" || a == "y" || a == "yes"
 		}
-		return reportResume(ctx, rep, name, lock, args, runtime.GOOS == "windows", *yes, confirm,
+		return reportResume(ctx, rep, name, lock, resumeArgs, runtime.GOOS == "windows", *yes, confirm,
 			func(f string, a ...any) { fmt.Fprintf(stdout, f, a...) })
 	}
 	for _, s := range rep.Steps {

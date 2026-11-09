@@ -13,7 +13,9 @@ import (
 	"github.com/InstallZero/installzero/catalog"
 	"github.com/InstallZero/installzero/internal/source"
 	"github.com/InstallZero/installzero/internal/state"
+	"github.com/InstallZero/installzero/internal/tag"
 	"github.com/InstallZero/installzero/internal/track"
+	"github.com/InstallZero/installzero/internal/ui"
 )
 
 // Name is how this process was invoked, without a directory or .exe.
@@ -63,6 +65,9 @@ const commandList = `
   probe --wsl <distro> [--target <path>]  write an install.md from a running install
   install [install.md] [--wsl <distro>]   run an install.md: detect, install, verify each step
           [--agent <provider:model>]      ... or let a model carry it out (same tiers and record)
+  install <owner/repo[@ref] | git URL>    get the project (git clone, or GitHub's archive without
+          [--into <folder>]               git) into ~/<repo>/<repo> and run its install.md
+  tag <owner/repo[@ref]> -o <out.exe>     a copy that installs that project when double-clicked
   compare <report.json>...                install runs side by side (step runner against agent)
   key set|remove|status <provider>        hosted-model API keys, kept in the OS credential store
   uninstall [project] [--data]            undo everything a recorded install changed
@@ -74,7 +79,20 @@ phase, --doctor <model> chooses the model, and -g is machine scope.
 `
 
 // Run executes one invocation. args does not include the program name.
+// Opened from Explorer, it keeps its window open at the end.
 func Run(args []string, stdout, stderr io.Writer) int {
+	explorer := ownConsole() && ui.IsConsoleInput(os.Stdin)
+	code := dispatch(args, explorer, stdout, stderr)
+	if explorer {
+		pauseBeforeClose(stdout)
+	}
+	return code
+}
+
+func dispatch(args []string, explorer bool, stdout, stderr io.Writer) int {
+	if len(args) == 0 && (tag.Project() != "" || explorer) {
+		return opened(stdout, stderr)
+	}
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" || args[0] == "help" {
 		fmt.Fprint(stdout, usageText()+commandList)
 		return 0
@@ -112,6 +130,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return cmdCompare(args[1:], stdout, stderr)
 	case "key":
 		return cmdKey(args[1:], stdout, stderr)
+	case "tag":
+		return cmdTag(args[1:], stdout, stderr)
 	case "version", "--version":
 		fmt.Fprintf(stdout, "%s %s\n", Name, Version)
 		return 0
